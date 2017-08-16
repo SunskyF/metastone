@@ -207,7 +207,7 @@ if __name__ == '__main__':
     X, y = load_data(data_file, is_discounted)
 #    X[X<0] = 0
 #    X = np.log(X + 1)  # log变换
-    
+    print(X[0, :])
     lr = LogisticRegression(max_iter=500, verbose=0)  
     #lr = LinearRegression()
     lr.fit(X, y)

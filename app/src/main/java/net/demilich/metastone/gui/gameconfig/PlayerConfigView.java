@@ -17,10 +17,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import net.demilich.metastone.game.behaviour.*;
-import net.demilich.metastone.game.behaviour.heuristic.SupervisedLinearHeuristic;
-import net.demilich.metastone.game.behaviour.heuristic.SupervisedModelHeuristic;
-import net.demilich.metastone.game.behaviour.heuristic.SupervisedThreeStageLinearHeuristic;
-import net.demilich.metastone.game.behaviour.heuristic.WeightedHeuristic;
+import net.demilich.metastone.game.behaviour.heuristic.*;
 import net.demilich.metastone.game.behaviour.human.HumanBehaviour;
 import net.demilich.metastone.game.behaviour.threat.FeatureVector;
 import net.demilich.metastone.game.behaviour.threat.GameStateValueBehaviour;
@@ -173,6 +170,7 @@ public class PlayerConfigView extends VBox {
 		behaviourList.add(new GreedyOptimizeMove(new WeightedHeuristic()));
 		behaviourList.add(new GreedyOptimizeMoveLinear(new SupervisedLinearHeuristic()));  // add by sjx, 尝试监督学习局面评估函数
 //		behaviourList.add(new GreedyOptimizeMoveModel(new SupervisedModelHeuristic()));  // add by sjx, 尝试监督学习局面评估模型，模型通过PMML文件表示
+		behaviourList.add(new GreedyOptimizeMoveModel(new SupervisedTfHeuristic()));
 		behaviourList.add(new ReplayQLearningLinear(new SupervisedModelHeuristic()));  // add by sjx, 尝试QLearning学习Linear局面评估函数
 //		behaviourList.add(new SarsaMLP());  // add by sjx, 尝试sarsa学习MLP局面评估函数
 		behaviourList.add(new LinearCEM()); // add by sjx, 尝试使用CEM直接优化Linear局面评估函数

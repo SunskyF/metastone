@@ -240,8 +240,8 @@ public class SupervisedLinearHeuristic implements IGameStateHeuristic{
         assert(envState.size() >= coef.length);
         int j = 0;
         for (int i = 0; i < envState.size(); i++){
-            //if (isIgnore(i))
-            //    continue;
+            if (isIgnore(i))
+                continue;
             score += coef[j]*envState.get(i);
             j++;
         }
@@ -255,7 +255,7 @@ public class SupervisedLinearHeuristic implements IGameStateHeuristic{
     }
 
     private boolean isIgnore(int i) {
-        int[] ignoreIdx = {2, 11, 17, 26};
+        int[] ignoreIdx = {3, 12, 18, 27};
         for (int idx: ignoreIdx){
             if (idx == i)
                 return true;
