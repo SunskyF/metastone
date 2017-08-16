@@ -16,7 +16,7 @@ public class WeightedHeuristic implements IGameStateHeuristic {
 		if (minion.hasAttribute(Attribute.TAUNT)) {   // 嘲讽技能，得分 +2
 			minionScore += 2;
 		}
-		if (minion.hasAttribute(Attribute.WINDFURY)) {
+		if (minion.hasAttribute(Attribute.WINDFURY)) { //风怒 攻击两次
 			minionScore += minion.getAttack() * 0.5f;
 		}
 		if (minion.hasAttribute(Attribute.DIVINE_SHIELD)) {  //圣盾
@@ -25,10 +25,10 @@ public class WeightedHeuristic implements IGameStateHeuristic {
 		if (minion.hasAttribute(Attribute.SPELL_DAMAGE)) {  // 法术伤害
 			minionScore += minion.getAttributeValue(Attribute.SPELL_DAMAGE);
 		}
-		if (minion.hasAttribute(Attribute.ENRAGED)) {
+		if (minion.hasAttribute(Attribute.ENRAGED)) { //激怒，不是满血
 			minionScore += 1;
 		}
-		if (minion.hasAttribute(Attribute.STEALTH)) {
+		if (minion.hasAttribute(Attribute.STEALTH)) { // 潜行
 			minionScore += 1;
 		}
 		if (minion.hasAttribute(Attribute.UNTARGETABLE_BY_SPELLS)) {  // 不能被法术指定

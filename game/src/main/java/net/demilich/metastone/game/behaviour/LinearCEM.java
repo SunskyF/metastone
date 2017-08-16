@@ -186,7 +186,7 @@ public class LinearCEM extends Behaviour {
 		paraList.add(parWeight.clone());
 
 		gameCount++;
-//		logger.info("gameCount: {}, winner: {}, HpDiff: {}", gameCount, winningPlayerId, reward);  // 可以根据HpDiff来判断胜负和设定reward
+		logger.info("gameCount: {}, winner: {}, HpDiff: {}", gameCount, winningPlayerId, reward);  // 可以根据HpDiff来判断胜负和设定reward
 //		logger.info("rewardMap: {}, para: {}, parMean: {}, parVar: {}", rewardMap, parWeight, parMean, parVar);
 		// 执行一个batchSize之后
 		if(gameCount%batchSize == 0){

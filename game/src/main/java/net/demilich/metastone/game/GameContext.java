@@ -1,11 +1,14 @@
 package net.demilich.metastone.game;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Stack;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.*;
 
 import net.demilich.metastone.game.cards.CardType;
+import net.demilich.metastone.game.entities.heroes.HeroClass;
+import net.demilich.metastone.game.entities.minions.Minion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -444,21 +447,53 @@ public class GameContext implements Cloneable, IDisposable {
 		onGameStateChanged();
 	}
 
+	private void appendWrite(String fileName, String content) {
+		FileWriter fw = null;
+		try {
+			//如果文件存在，则追加内容；如果文件不存在，则创建文件
+			File f=new File(fileName);
+			fw = new FileWriter(f, true);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		PrintWriter pw = new PrintWriter(fw);
+		pw.println(content);
+		pw.flush();
+		try {
+			fw.flush();
+			pw.close();
+			fw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public void play() {
 		logger.debug("Game starts: " + getPlayer1().getName() + " VS. " + getPlayer2().getName());
 		init();
+		StringBuilder sb = new StringBuilder();
+		int nowTurn = 0;
+		int winner_id = 0;
 		while (!gameDecided()) {  // 如果游戏胜负未分，开始切换后的activePlayer的turn
 			startTurn(activePlayer);  // 开始当前activePlayer的Turn
 			while (playTurn()) {}    // 循环play，直到执行END_TURN action，结束当前player的当前turn （主要是调用behaviour的requestAction）
 			// add by sjx, 获取每一回合结束时的环境信息
-//			logger.info(this.contextInfoStr());
+			//logger.info(this.contextInfoStr());
+			sb.append(this.contextInfoStr()+"\n");
+			//logger.info(this.feature_0());
+			//sb.append(this.feature_0() + "\n");
+			nowTurn = getTurn();
+			winner_id = getWinningPlayerId();
 			if (getTurn() > GameLogic.TURN_LIMIT) {
 				break;
 			}
 		}
+
+		sb.append("{'GameHash':" + hashCode() + ",'Turn':" + nowTurn + ",'winner':" + winner_id + "}");
+		//appendWrite("HunterVsHunter_randomDeck_" + getActivePlayer().getBehaviour().getName() + "_26feature_50000.log", sb.toString());
 		endGame();
 		// add by sjx
-//		logger.info("{'GameHash':" + hashCode() + ",'Turn':" + turn + ",'winner':" + winner.getId() + "}");
+		//logger.info("{'GameHash':" + hashCode() + ",'Turn':" + turn + ",'winner':" + winner.getId() + "}");
 	}
 
 	public void playFromState(){
@@ -470,6 +505,7 @@ public class GameContext implements Cloneable, IDisposable {
 				break;
 			}
 		}
+
 		endGame();
 
 	}
@@ -505,7 +541,7 @@ public class GameContext implements Cloneable, IDisposable {
 	}
 
 	public void printCurrentTriggers() {
-		logger.info("Active spelltriggers:");
+		//logger.info("Active spelltriggers:");
 		triggerManager.printCurrentTriggers();
 	}
 	
@@ -579,6 +615,225 @@ public class GameContext implements Cloneable, IDisposable {
 		turnState = TurnState.TURN_IN_PROGRESS;
 	}
 
+	public String feature_0(){//86 feature total, 43 each
+		StringBuilder builder = new StringBuilder("{'GameHash':" + hashCode() + ",'Turn':" + getTurn());
+		for (Player player : players){
+			builder.append(",'player" + player.getId() + "':'");
+			builder.append(player.getHero().getHp());  // 血量
+			builder.append("|" + player.getHero().getArmor()); // 护甲
+			builder.append("|" + player.getMana());  // 当前法力值
+			int weaponDamage = 0;
+			int weaponDurability = 0;
+			if (player.getHero().getWeapon() != null) {
+				weaponDamage = player.getHero().getWeapon().getWeaponDamage();  //武器伤害
+				weaponDurability = player.getHero().getWeapon().getDurability(); //武器耐久
+			}
+			builder.append("|" + weaponDamage);
+			builder.append("|" + weaponDurability);
+
+			// 英雄技能, 暂时按照英雄类型将技能分为1、2、3三档，暂时不考虑一些非基础的英雄技能的影响
+			int heroPower = 3; // 默认为3
+			HeroClass heroPowerClass = player.getHero().getHeroPower().getHeroClass();
+			if(heroPowerClass == HeroClass.HUNTER || heroPowerClass == HeroClass.MAGE || heroPowerClass == HeroClass.WARLOCK){
+				heroPower = 3;
+			}else if(heroPowerClass == HeroClass.DRUID || heroPowerClass == HeroClass.PALADIN || heroPowerClass == HeroClass.SHAMAN){
+				heroPower = 2;
+			}else if(heroPowerClass == HeroClass.PRIEST || heroPowerClass == HeroClass.ROGUE || heroPowerClass == HeroClass.WARRIOR){
+				heroPower = 1;
+			}
+			builder.append("|" + heroPower);
+
+			// 场上的随从相关数据
+			int minionCount = 0;   // minions on board that can still attack (直观来说，一回合结束时，自己场上应该不会再有能攻击的随从还没用的情况)
+			int minionAttack = 0;
+			int minionHp = 0;
+			int minionCountNot = 0; // minions on board that can not attack
+			int minionAttackNot = 0;
+			int minionHpNot = 0;
+			int minionCountTaunt = 0;  // 带嘲讽的随从
+			int minionAttackTaunt= 0;
+			int minionHpTaunt = 0;
+			int minionCountFrozen = 0;  // 冻结的随从
+			int minionAttackFrozen= 0;
+			int minionHpFrozen = 0;
+			int minionCountStealth = 0;  // 潜行的随从
+			int minionAttackStealth= 0;
+			int minionHpStealth = 0;
+			int minionCountShield = 0;  // 带圣盾的随从
+			int minionAttackShield= 0;
+			int minionHpShield = 0;
+			int minionCountEnrage = 0;  // 带激怒的随从
+			int minionAttackEnrage= 0;
+			int minionHpEnrage = 0;
+			int minionCountUntarget = 0;  // 不可被法术攻击的随从
+			int minionAttackUntarget= 0;
+			int minionHpUntarget = 0;
+			int minionCountWindfury = 0; // 带风怒效果的随从
+			int minionAttackWindfury = 0;
+			int minionHpWindfury = 0;
+			int minionCountSpell = 0;  // 带法术伤害的随从
+			int minionSpellDamage = 0;
+
+			for (Minion minion : player.getMinions()) {  // 场上的随从信息
+				if (minion.canAttackThisTurn()) {
+					minionCount += 1;
+					minionAttack += minion.getAttack();
+					minionHp += minion.getHp();
+				} else {
+					minionCountNot += 1;
+					minionAttackNot += minion.getAttack();
+					minionHpNot += minion.getHp();
+				}
+				if(minion.hasAttribute(Attribute.TAUNT)){
+					minionCountTaunt += 1;
+					minionAttackTaunt += minion.getAttack();
+					minionHpTaunt += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.FROZEN)) {  // 冻结的随从
+					minionCountFrozen += 1;
+					minionAttackFrozen += minion.getAttack();
+					minionHpFrozen += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.STEALTH)) {  // 潜行
+					minionCountStealth += 1;
+					minionAttackStealth += minion.getAttack();
+					minionHpStealth += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.DIVINE_SHIELD)) {  //圣盾
+					minionCountShield += 1;
+					minionAttackShield += minion.getAttack();
+					minionHpShield += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.ENRAGED)) {  // 激怒
+					minionCountEnrage += 1;
+					minionAttackEnrage += minion.getAttack();
+					minionHpEnrage += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.UNTARGETABLE_BY_SPELLS)) {  // 不能被法术指定
+					minionCountUntarget += 1;
+					minionAttackUntarget += minion.getAttack();
+					minionHpUntarget += minion.getHp();
+				}
+				if (minion.hasAttribute(Attribute.WINDFURY) || minion.hasAttribute(Attribute.MEGA_WINDFURY)) {  // 风怒或超级风怒
+					minionCountWindfury += 1;
+					minionHpWindfury += minion.getHp();
+					if (minion.hasAttribute(Attribute.MEGA_WINDFURY)){  // 风怒或超级风怒带来的额外的攻击力
+						minionAttackWindfury += 3*minion.getAttack();
+					}else{
+						minionAttackWindfury += minion.getAttack();
+					}
+				}
+				if (minion.hasAttribute(Attribute.SPELL_DAMAGE)) {  // 法术伤害
+					minionCountSpell += 1;
+					minionSpellDamage += minion.getAttributeValue(Attribute.SPELL_DAMAGE);
+				}
+			}
+
+			builder.append("|" + minionCount + "|" + minionAttack + "|" + minionHp + "|" + minionCountNot + "|" + minionAttackNot + "|" + minionHpNot);
+			builder.append("|" + minionCountTaunt + "|" + minionAttackTaunt + "|" + minionHpTaunt);
+			builder.append("|" + minionCountFrozen + "|" + minionAttackFrozen + "|" + minionHpFrozen);
+			builder.append("|" + minionCountStealth + "|" + minionAttackStealth + "|" + minionHpStealth);
+			builder.append("|" + minionCountShield + "|" + minionAttackShield + "|" + minionHpShield);
+			builder.append("|" + minionCountEnrage + "|" + minionAttackEnrage + "|" + minionHpEnrage);
+			builder.append("|" + minionCountUntarget + "|" + minionAttackUntarget + "|" + minionHpUntarget);
+			builder.append("|" + minionCountWindfury + "|" + minionAttackWindfury + "|" + minionHpWindfury);
+			builder.append("|" + minionCountSpell + "|" + minionSpellDamage);
+
+
+			// 手牌相关信息
+			int cardMinionCount = 0;
+			int cardMinionMana = 0;
+			int cardMinionBattleCry = 0;
+			int cardWeaponCount = 0;
+			int cardWeaponMana = 0;
+			int cardSpellCount = 0;
+			int cardSpellMana = 0;
+			int cardHardRemoval = 0;
+			for (Card card : player.getHand()) {
+				if (card.getCardType() == CardType.MINION) {  // 随从牌
+					cardMinionCount += 1;
+					cardMinionMana += card.getBaseManaCost();
+					if (card.hasBattlecry()) {
+						cardMinionBattleCry += 1;  // 这个似乎一直是0，可能没用
+					}
+				} else if(card.getCardType() == CardType.WEAPON){  // 武器牌
+					cardWeaponCount += 1;
+					cardWeaponMana += card.getBaseManaCost();
+				} else{  // 剩下的应该就是Spell法术牌了，但貌似也有另外几个其他的, 不区分
+					cardSpellCount += 1;
+					cardSpellMana += card.getBaseManaCost();
+				}
+
+				if (Player.isHardRemoval(card)) {
+					cardHardRemoval += 1;
+				}
+			}
+
+			builder.append("|" + cardMinionCount + "|" + cardMinionMana + "|" + cardMinionBattleCry);
+			builder.append("|" + cardWeaponCount + "|" + cardWeaponMana);
+			builder.append("|" + cardSpellCount + "|" + cardSpellMana + "|" + cardHardRemoval);
+
+			builder.append("'");
+		}
+		builder.append('}');
+		return builder.toString();
+	}
+
+	public String feature_1(){
+		StringBuilder builder = new StringBuilder("{'GameHash':" + hashCode() + ",'Turn':" + getTurn());
+
+		for (Player player : players){
+			builder.append(",'player" + player.getId() + "':'");
+			builder.append(player.getHero().getHp());  // 血量
+			builder.append("|" + player.getMana());  // 当前法力值
+			builder.append("|" + player.getHero().getArmor()); // 护甲
+
+			// 场上的随从相关数据
+			int summonCount = 0;   // minions on board that can still attack (直观来说，一回合结束时，自己场上应该不会再有能攻击的随从还没用的情况)
+			int summonAttack = 0;
+			int summonHp = 0;
+			int summonCountNot = 0; // minions on board that can not attack
+			int summonAttackNot = 0;
+			int summonHpNot = 0;
+			for (Summon summon : player.getSummons()) {   // 场上的随从信息, 暂时只考虑攻击力和血量，跑通流程，各种特殊效果后面补充
+				if (summon.canAttackThisTurn()) {
+					summonCount += 1;
+					summonAttack += summon.getAttack();
+					summonHp += summon.getHp();
+				} else {
+					summonCountNot += 1;
+					summonAttackNot += summon.getAttack();
+					summonHpNot += summon.getHp();
+				}
+			}
+			builder.append("|" + summonCount + "|" + summonAttack + "|" + summonHp);
+			builder.append("|" + summonCountNot + "|" + summonAttackNot + "|" + summonHpNot);
+
+			// 手牌相关信息
+			int cardMinionCount = 0;
+			int cardMinionBattleCry = 0;
+			int cardSpellCount = 0;
+			int cardSpellMana = 0;
+			for (Card card : player.getHand()) {
+				if (card.getCardType() == CardType.MINION) {
+					cardMinionCount += 1;
+					if (card.hasBattlecry()) {
+						cardMinionBattleCry += 1;
+					}
+				} else {  // 除了Spell法术牌以外，其实还有 CHOOSE_ONE 等其他手牌类型，但目前暂时不考虑
+					cardSpellCount += 1;
+					cardSpellMana += card.getBaseManaCost();
+				}
+			}
+			builder.append("|" + cardMinionCount + "|" + cardMinionBattleCry); // change by fh
+			builder.append("|" + cardSpellCount + "|" + cardSpellMana);
+
+			builder.append("'");
+		}
+		builder.append('}');
+		return builder.toString();
+	}
+
 	public String contextInfoStr(){
 		// 将我们希望提取的环境信息表示成格式化字符串
 		StringBuilder builder = new StringBuilder("{'GameHash':" + hashCode() + ",'Turn':" + getTurn());
@@ -630,6 +885,7 @@ public class GameContext implements Cloneable, IDisposable {
 				}
 			}
 			builder.append("|" + cardMinionCount + "|" + cardMinionMana + "|" + cardMinionBattleCry);
+			//builder.append("|" + cardMinionCount + "|" + cardMinionBattleCry); // change by fh
 			builder.append("|" + cardSpellCount + "|" + cardSpellMana);
 
 			builder.append("'");

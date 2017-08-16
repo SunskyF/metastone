@@ -89,6 +89,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 	@Override
 	public GameAction requestAction(GameContext context, Player player, List<GameAction> validActions) {
 		// Sjx, output info
+		/*
 		logger.info("num of valid actions {}, they are {}.", validActions.size(), validActions);
 		logger.info("player state vec: {}.", player.getPlayerState());
 		logger.info("opp state vec: {}.", context.getOpponent(player).getPlayerState());
@@ -96,7 +97,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 		logger.info("num of Summons:{}, Summons: {}.", player.getSummons().size(), player.getSummons());
 		logger.info("num of Minions:{}, Minions: {}.", player.getMinions().size(), player.getMinions());
 		logger.info("num in Hand: {}, Hand: {}.", player.getHand().getCount(), player.getHand().toList());
-
+		*/
 		waitingForInput = true;
 		HumanActionOptions options = new HumanActionOptions(this, context, player, validActions);
 		NotificationProxy.sendNotification(GameNotification.HUMAN_PROMPT_FOR_ACTION, options);

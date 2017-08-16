@@ -178,7 +178,7 @@ public class Player extends Entity {
 		return statistics;
 	}
 
-	private static boolean isHardRemoval(Card card) {
+	public static boolean isHardRemoval(Card card) {
 		return hardRemoval.contains(card.getCardId());
 	}
 
@@ -344,9 +344,14 @@ public class Player extends Entity {
 				minionSpellDamage += minion.getAttributeValue(Attribute.SPELL_DAMAGE);
 			}
 		}
-		playerState.addAll(Arrays.asList(minionCount, minionAttack, minionHp, minionCountNot, minionAttackNot, minionHpNot, minionCountTaunt, minionAttackTaunt, minionHpTaunt,
-				minionCountFrozen, minionAttackFrozen, minionHpFrozen, minionCountStealth, minionAttackStealth, minionHpStealth, minionCountShield, minionAttackShield, minionHpShield,
-				minionCountEnrage, minionAttackEnrage, minionHpEnrage, minionCountUntarget, minionAttackUntarget, minionHpUntarget, minionCountWindfury, minionAttackWindfury, minionHpWindfury,
+		playerState.addAll(Arrays.asList(minionCount, minionAttack, minionHp, minionCountNot, minionAttackNot, minionHpNot,
+				minionCountTaunt, minionAttackTaunt, minionHpTaunt,
+				minionCountFrozen, minionAttackFrozen, minionHpFrozen,
+				minionCountStealth, minionAttackStealth, minionHpStealth,
+				minionCountShield, minionAttackShield, minionHpShield,
+				minionCountEnrage, minionAttackEnrage, minionHpEnrage,
+				minionCountUntarget, minionAttackUntarget, minionHpUntarget,
+				minionCountWindfury, minionAttackWindfury, minionHpWindfury,
 				minionCountSpell, minionSpellDamage));
 
 		// 手牌相关信息

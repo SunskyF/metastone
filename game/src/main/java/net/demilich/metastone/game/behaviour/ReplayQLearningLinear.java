@@ -30,7 +30,7 @@ public class ReplayQLearningLinear extends Behaviour {
 	private double epsilon = 0.1;
 	private int turn = 0;
 	private final IGameStateHeuristic heuristic;
-	private final static String pmmlFile = "E:\\MetaStone\\app\\mlp.pmml";
+	private final static String pmmlFile = "E:\\workspace\\MetaStone\\app\\mlp.pmml";
 	private static Evaluator modelEvaluator;
 	private long[] playersWinCount = {0,0};
 	private static double runningReward = 0;
