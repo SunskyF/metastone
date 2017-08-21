@@ -25,6 +25,10 @@ public class Feature_basic {
         this.fea_name = fea_name;
     }
 
+    public int feature_number(){
+        return states.get(0).size();
+    }
+
     public void appendWrite(String filename){
         FileWriter fw = null;
         assert(this.winner != -1);
@@ -66,7 +70,7 @@ public class Feature_basic {
         }
 
         states.add(envState);
-        logger.info("envState Size: {}, states Size: {}", envState.size(), states.size());
+        //logger.info("envState Size: {}, states Size: {}", envState.size(), states.size());
     }
 
     public void end(int winner_id){

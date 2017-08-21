@@ -124,7 +124,9 @@ from sklearn.neural_network import MLPRegressor
 #data_file = 'app/HunterVsHunter_randomDeck_Play Random_fea0_50000.log'
 #data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea_feature_fh_0_50000.log'
 #data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea_feature_fh_0_50000.log'
-data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea38_feature_fh_1_50000.log'
+#data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea38_feature_fh_1_50000.log'
+
+data_file = 'app/WarriorVsWarrior_WPW_Play Randomfea32_feature_fh_0_50000.log'
 
 def feature_filter(data_X):
     return np.delete(data_X, [3, 12, 18, 27], 1)

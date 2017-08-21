@@ -481,29 +481,34 @@ public class GameContext implements Cloneable, IDisposable {
 			1. Basic
 			2. feature_fh_0
 		 */
-		String fea_name = "feature_fh_1";
+		String fea_name = "feature_fh_0";
 		Feature_basic fea = new Feature_basic(hashCode(), fea_name);
 
 		while (!gameDecided()) {  // 如果游戏胜负未分，开始切换后的activePlayer的turn
 			startTurn(activePlayer);  // 开始当前activePlayer的Turn
 			while (playTurn()) {}    // 循环play，直到执行END_TURN action，结束当前player的当前turn （主要是调用behaviour的requestAction）
 			// add by sjx, 获取每一回合结束时的环境信息
-			//logger.info(this.contextInfoStr());
-			//sb.append(this.contextInfoStr()+"\n");
-			//logger.info(this.feature_0());
-			//sb.append(this.feature_0() + "\n");
-			//nowTurn = getTurn();
-			//fea.append(players);
+
+			fea.append(players);
 			winner_id = getWinningPlayerId();
 			if (getTurn() > GameLogic.TURN_LIMIT) {
 				break;
 			}
 		}
 
-		int num_sim = 50000;
+		logger.info(players[0].getDeckName());
+		int num_sim = 50;
 		fea.end(winner_id);
-		String filename = "HunterVsHunter_randomDeck_" + getActivePlayer().getBehaviour().getName() +
-				"fea38_" + fea_name + "_" + num_sim + ".log";
+		String player_class_0 = "Warrior" + "_" + players[0].getDeckName();
+		//players[1].getHero().getHeroPower().getHeroClass().toString()好像会报错
+		String player_class_1 = "Warrior" + "_" + players[1].getDeckName();
+		int fea_num = fea.feature_number();
+
+		String filename = player_class_0 + "Vs" + player_class_1 +
+				"_" + players[0].getBehaviour().getName() + "Vs" +
+				players[1].getBehaviour().getName() + "_" +
+				fea_name + "_" + fea_num + "_" + num_sim + ".log";
+
 		//fea.appendWrite(filename);
 		endGame();
 		// add by sjx

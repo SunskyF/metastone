@@ -228,13 +228,6 @@ public class LinearBatchCEM extends Behaviour {
 
 	@Override
 	public void onGameOver(GameContext context, int playerId, int winningPlayerId) {
-		// GameOver的时候会跳入这个函数
-//		Player player = context.getPlayer(playerId);
-//		Player opponent = context.getOpponent(player);
-//		List<Integer> playerState = player.getPlayerState();
-//		List<Integer> opponentState = opponent.getPlayerState();
-//		int reward = player.getHero().getHp() - opponent.getHero().getHp();
-
 		gameCount++;
 		if(playerId == winningPlayerId){
 			batchWinCnt += 1;
