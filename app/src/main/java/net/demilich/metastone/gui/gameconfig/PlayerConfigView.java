@@ -170,7 +170,7 @@ public class PlayerConfigView extends VBox {
 		behaviourList.add(new GreedyOptimizeMove(new WeightedHeuristic()));
 		behaviourList.add(new GreedyOptimizeMoveLinear(new SupervisedLinearHeuristic()));  // add by sjx, 尝试监督学习局面评估函数
 //		behaviourList.add(new GreedyOptimizeMoveModel(new SupervisedModelHeuristic()));  // add by sjx, 尝试监督学习局面评估模型，模型通过PMML文件表示
-		behaviourList.add(new GreedyOptimizeMoveModel(new SupervisedTfHeuristic()));
+		//behaviourList.add(new GreedyOptimizeMoveModel(new SupervisedTfHeuristic()));
 		behaviourList.add(new ReplayQLearningLinear(new SupervisedModelHeuristic()));  // add by sjx, 尝试QLearning学习Linear局面评估函数
 //		behaviourList.add(new SarsaMLP());  // add by sjx, 尝试sarsa学习MLP局面评估函数
 		behaviourList.add(new LinearCEM()); // add by sjx, 尝试使用CEM直接优化Linear局面评估函数
@@ -185,9 +185,12 @@ public class PlayerConfigView extends VBox {
 //		behaviourList.add(new MonteCarloTreeSearch());
 //		behaviourList.add(new GreedyOptimizeTurn(new WeightedHeuristic()));
 //		behaviourList.add(new GreedyOptimizeTurn(new ThreatBasedHeuristic(FeatureVector.getDefault()))); // 运行会出错，原因不明
+
 		/* ------fh------- */
-		behaviourList.add(new Random_fh());
+		behaviourList.add(new LinearSA());
+		behaviourList.add(new LinearBatchSA());
 		/* ------fh end--- */
+
 		behaviourBox.setItems(behaviourList);
 		behaviourBox.valueProperty().addListener(this::onBehaviourChanged);
 	}

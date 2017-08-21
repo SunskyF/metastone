@@ -11,6 +11,7 @@ import net.demilich.metastone.game.behaviour.human.HumanBehaviour;
 import net.demilich.metastone.game.cards.Card;
 import net.demilich.metastone.game.cards.CardCollection;
 import net.demilich.metastone.game.cards.CardType;
+import net.demilich.metastone.game.cards.Rarity;
 import net.demilich.metastone.game.decks.Deck;
 import net.demilich.metastone.game.entities.Actor;
 import net.demilich.metastone.game.entities.Entity;
@@ -21,6 +22,8 @@ import net.demilich.metastone.game.entities.minions.Minion;
 import net.demilich.metastone.game.entities.minions.Summon;
 import net.demilich.metastone.game.statistics.GameStatistics;
 import net.demilich.metastone.game.gameconfig.PlayerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Player extends Entity {
 
@@ -44,6 +47,7 @@ public class Player extends Entity {
 	private boolean hideCards;
 
 	private IBehaviour behaviour;
+	private static final Logger logger = LoggerFactory.getLogger(GameContext.class);
 
 	private static List<String> hardRemoval;
 	static {
@@ -229,6 +233,164 @@ public class Player extends Entity {
 			}
 		}
 		playerState.addAll(Arrays.asList(cardMinionCount, cardMinionMana, cardMinionBattleCry, cardSpellCount, cardSpellMana));
+		return playerState;
+	}
+
+	public List<Integer> getPlayerStatefh0(){
+		List<Integer> playerState = new ArrayList<Integer>();
+
+		playerState.add(this.getHero().getHp());  // 0. 血量
+		playerState.add(this.getMana());  // 1. 当前法力值
+		playerState.add(this.getMaxMana());   // 2. 当前最大法力值
+		playerState.add(this.getHero().getArmor()); // 3. 护甲
+
+		int weaponDamage = 0;
+		int weaponDurability = 0;
+		if (this.getHero().getWeapon() != null) {
+			weaponDamage = this.getHero().getWeapon().getWeaponDamage();
+			weaponDurability = this.getHero().getWeapon().getDurability();
+		}
+		playerState.add(weaponDamage); // 4. 武器伤害
+		playerState.add(weaponDurability); // 5. 武器耐久
+
+		// 场上的随从相关数据
+		int summonCount = 0;  // 6. // minions on board that can still attack (直观来说，一回合结束时，自己场上应该不会再有能攻击的随从还没用的情况)
+		int summonAttack = 0; // 7.
+		int summonHp = 0; // 8.
+		int summonCountNot = 0; // 9. // minions on board that can not attack
+		int summonAttackNot = 0; // 10.
+		int summonHpNot = 0; // 11.
+
+		for (Summon summon : this.getSummons()) {   // 场上的随从信息, 暂时只考虑攻击力和血量，跑通流程，各种特殊效果后面补充
+			if (summon.canAttackThisTurn()) {
+				summonCount += 1;
+				summonAttack += summon.getAttack();
+				summonHp += summon.getHp();
+			} else {
+				summonCountNot += 1;
+				summonAttackNot += summon.getAttack();
+				summonHpNot += summon.getHp();
+			}
+		}
+		playerState.addAll(Arrays.asList(summonCount, summonAttack, summonHp, summonCountNot, summonAttackNot, summonHpNot));
+		//playerState.addAll(Arrays.asList(summonManaLow, summonManaMid, summonManaHigh));
+
+		// 手牌相关信息
+		int cardMinionCount = 0; // 12.
+		int cardMinionMana = 0; // 13.
+		int cardSpellCount = 0; // 14.
+		int cardSpellMana = 0; // 15.
+
+		for (Card card : this.getHand()) {
+
+			if (card.getCardType() == CardType.MINION) {
+				cardMinionCount += 1;
+				cardMinionMana += card.getBaseManaCost();
+			} else {  // 除了Spell法术牌以外，其实还有 CHOOSE_ONE 等其他手牌类型，但目前暂时不考虑
+				cardSpellCount += 1;
+				cardSpellMana += card.getBaseManaCost();
+			}
+		}
+
+		playerState.addAll(Arrays.asList(cardMinionCount, cardMinionMana, cardSpellCount, cardSpellMana));
+
+		return playerState;
+	}
+
+	public List<Integer> getPlayerStatefh1(){
+		List<Integer> playerState = new ArrayList<Integer>();
+
+		playerState.add(this.getHero().getHp());  // 0. 血量
+		playerState.add(this.getMana());  // 1. 当前法力值
+		playerState.add(this.getMaxMana());   // 2. 当前最大法力值
+		playerState.add(this.getHero().getArmor()); // 3. 护甲
+
+		int weaponDamage = 0;
+		int weaponDurability = 0;
+		if (this.getHero().getWeapon() != null) {
+			weaponDamage = this.getHero().getWeapon().getWeaponDamage();
+			weaponDurability = this.getHero().getWeapon().getDurability();
+		}
+		playerState.add(weaponDamage); // 4. 武器伤害
+		playerState.add(weaponDurability); // 5. 武器耐久
+
+		// 场上的随从相关数据
+		int summonCount = 0;  // 6. // minions on board that can still attack (直观来说，一回合结束时，自己场上应该不会再有能攻击的随从还没用的情况)
+		int summonAttack = 0; // 7.
+		int summonHp = 0; // 8.
+		int summonCountNot = 0; // 9. // minions on board that can not attack
+		int summonAttackNot = 0; // 10.
+		int summonHpNot = 0; // 11.
+		int summonManaLow = 0; // 16.
+		int summonManaMid = 0; // 17.
+		int summonManaHigh = 0; // 18.
+		for (Summon summon : this.getSummons()) {   // 场上的随从信息, 暂时只考虑攻击力和血量，跑通流程，各种特殊效果后面补充
+
+			int summonMana = summon.getAttributeValue(Attribute.BASE_MANA_COST);
+			if (summonMana <= 3)
+				summonManaLow += 1;
+			else if (summonMana <= 6)
+				summonManaMid += 1;
+			else
+				summonManaHigh += 1;
+
+			if (summon.canAttackThisTurn()) {
+				summonCount += 1;
+				summonAttack += summon.getAttack();
+				summonHp += summon.getHp();
+			} else {
+				summonCountNot += 1;
+				summonAttackNot += summon.getAttack();
+				summonHpNot += summon.getHp();
+			}
+		}
+		playerState.addAll(Arrays.asList(summonCount, summonAttack, summonHp, summonCountNot, summonAttackNot, summonHpNot));
+		playerState.addAll(Arrays.asList(summonManaLow, summonManaMid, summonManaHigh));
+
+		// 手牌相关信息
+		int cardMinionCount = 0; // 12.
+		int cardMinionMana = 0; // 13.
+		int cardSpellCount = 0; // 14.
+		int cardSpellMana = 0; // 15.
+		int cardManaLow = 0; // 16.
+		int cardManaMid = 0; // 17.
+		int cardManaHigh = 0; // 18.
+		int cardNormal = 0;
+		int cardRare = 0;
+
+		for (Card card : this.getHand()) {
+
+			if (card.getBaseManaCost() <= 3)
+				cardManaLow += 1;
+			else if (card.getBaseManaCost() <= 6)
+				cardManaMid += 1;
+			else
+				cardManaHigh += 1;
+			/*
+			Rarity rarity = card.getRarity();
+			if (rarity == Rarity.FREE)
+				cardNormal += 1;
+			else if (rarity == Rarity.COMMON)
+				cardNormal += 1;
+			else if (rarity == Rarity.RARE)
+				cardNormal += 1;
+			else if (rarity == Rarity.EPIC)
+				cardRare += 1;
+			else
+				cardRare += 1;
+			*/
+			if (card.getCardType() == CardType.MINION) {
+				cardMinionCount += 1;
+				cardMinionMana += card.getBaseManaCost();
+			} else {  // 除了Spell法术牌以外，其实还有 CHOOSE_ONE 等其他手牌类型，但目前暂时不考虑
+				cardSpellCount += 1;
+				cardSpellMana += card.getBaseManaCost();
+			}
+		}
+
+		playerState.addAll(Arrays.asList(cardMinionCount, cardMinionMana, cardSpellCount, cardSpellMana));
+		//playerState.addAll(Arrays.asList(cardManaLow, cardManaMid, cardManaHigh));
+		//playerState.addAll(Arrays.asList(cardNormal, cardRare));
 		return playerState;
 	}
 

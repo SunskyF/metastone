@@ -120,8 +120,11 @@ from sklearn.neural_network import MLPRegressor
 #data_file = 'WarriorVsWarrior_basicDeck_randomPlay_1000games.log'  #在自己构造的简单卡牌组上实验
 # ------------------------------------------------------------------------------------------
 #data_file = 'HunterVsHunter_randomDeck_randomPlay_1000games.log'
-data_file = 'app/HunterVsHunter_randomDeck_Play Random_50000.log'
+#data_file = 'app/HunterVsHunter_randomDeck_Play Random_50000.log'
 #data_file = 'app/HunterVsHunter_randomDeck_Play Random_fea0_50000.log'
+#data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea_feature_fh_0_50000.log'
+#data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea_feature_fh_0_50000.log'
+data_file = 'app/HunterVsHunter_randomDeck_Play Randomfea38_feature_fh_1_50000.log'
 
 def feature_filter(data_X):
     return np.delete(data_X, [3, 12, 18, 27], 1)
@@ -143,6 +146,7 @@ def get_fea_label(data_dict, game_hash, total_turn, winner):
     total_turn = len(X_game)
     #res_X_game = X_game
     #res_y_game = y_game
+    #np.random.randint(2
     res_X_game = [X_game[2], X_game[int(0.5 * total_turn)], X_game[int(0.8 * total_turn)]]
     res_y_game = [y_game[2], y_game[int(0.5 * total_turn)], y_game[int(0.8 * total_turn)]]
     return res_X_game, res_y_game
@@ -192,12 +196,12 @@ def load_data(file_name, is_discounted):
 
     X = np.stack(X, axis=0)
     y = np.array(y)   
-    X = feature_filter(X)    
-    total_data = np.hstack([X, y[..., None]])
+    #X = feature_filter(X)    
+    #total_data = np.hstack([X, y[..., None]])
     #print(total_data.shape)
-    np.random.shuffle(total_data)
-    X = total_data[:, :-1]
-    y = total_data[:, -1]  
+    #np.random.shuffle(total_data)
+    #X = total_data[:, :-1]
+    #y = total_data[:, -1]  
     print(X.shape, y.shape)   
     return X, y
                 
@@ -207,7 +211,7 @@ if __name__ == '__main__':
     X, y = load_data(data_file, is_discounted)
 #    X[X<0] = 0
 #    X = np.log(X + 1)  # log变换
-    print(X[0, :])
+    #print(X[0, :])
     lr = LogisticRegression(max_iter=500, verbose=0)  
     #lr = LinearRegression()
     lr.fit(X, y)

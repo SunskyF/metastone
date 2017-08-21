@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
+import net.demilich.metastone.game.behaviour.features.Feature_basic;
 import net.demilich.metastone.game.cards.CardType;
 import net.demilich.metastone.game.entities.heroes.HeroClass;
 import net.demilich.metastone.game.entities.minions.Minion;
@@ -471,26 +472,39 @@ public class GameContext implements Cloneable, IDisposable {
 	public void play() {
 		logger.debug("Game starts: " + getPlayer1().getName() + " VS. " + getPlayer2().getName());
 		init();
-		StringBuilder sb = new StringBuilder();
-		int nowTurn = 0;
+		//StringBuilder sb = new StringBuilder();
+		//int nowTurn = 0;
 		int winner_id = 0;
+
+		// feature
+		/*
+			1. Basic
+			2. feature_fh_0
+		 */
+		String fea_name = "feature_fh_1";
+		Feature_basic fea = new Feature_basic(hashCode(), fea_name);
+
 		while (!gameDecided()) {  // 如果游戏胜负未分，开始切换后的activePlayer的turn
 			startTurn(activePlayer);  // 开始当前activePlayer的Turn
 			while (playTurn()) {}    // 循环play，直到执行END_TURN action，结束当前player的当前turn （主要是调用behaviour的requestAction）
 			// add by sjx, 获取每一回合结束时的环境信息
 			//logger.info(this.contextInfoStr());
-			sb.append(this.contextInfoStr()+"\n");
+			//sb.append(this.contextInfoStr()+"\n");
 			//logger.info(this.feature_0());
 			//sb.append(this.feature_0() + "\n");
-			nowTurn = getTurn();
+			//nowTurn = getTurn();
+			//fea.append(players);
 			winner_id = getWinningPlayerId();
 			if (getTurn() > GameLogic.TURN_LIMIT) {
 				break;
 			}
 		}
 
-		sb.append("{'GameHash':" + hashCode() + ",'Turn':" + nowTurn + ",'winner':" + winner_id + "}");
-		//appendWrite("HunterVsHunter_randomDeck_" + getActivePlayer().getBehaviour().getName() + "_26feature_50000.log", sb.toString());
+		int num_sim = 50000;
+		fea.end(winner_id);
+		String filename = "HunterVsHunter_randomDeck_" + getActivePlayer().getBehaviour().getName() +
+				"fea38_" + fea_name + "_" + num_sim + ".log";
+		//fea.appendWrite(filename);
 		endGame();
 		// add by sjx
 		//logger.info("{'GameHash':" + hashCode() + ",'Turn':" + turn + ",'winner':" + winner.getId() + "}");
