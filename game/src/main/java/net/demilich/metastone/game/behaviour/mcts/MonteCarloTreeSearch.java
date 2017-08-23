@@ -2,6 +2,8 @@ package net.demilich.metastone.game.behaviour.mcts;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import net.demilich.metastone.game.actions.ActionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +37,32 @@ public class MonteCarloTreeSearch extends Behaviour {
 
 	@Override
 	public GameAction requestAction(GameContext context, Player player, List<GameAction> validActions) {
+		logger.info("HP: {}, {}", context.getPlayer(0).getHero().getHp(), context.getPlayer(1).getHero().getHp());
 		if (validActions.size() == 1) {
-			logger.info("MCTS selected best action {}", validActions.get(0));
+			logger.info("MCTS selected best action (Only one choice): {}", validActions.get(0));
 			return validActions.get(0);
 		}
-		Node root = new Node(null, player.getId());
-		root.initState(context, validActions);
-		UctPolicy treePolicy = new UctPolicy();
+
+		if (validActions.get(0).getActionType() == ActionType.BATTLECRY) {
+			return validActions.get(0);
+		}
+		if (validActions.get(0).getActionType() == ActionType.DISCOVER) {  // battlecry and discover actions一定会在第一个么？
+			return validActions.get(0);
+		}
+
+		Node root = new Node(context, player.getId(), null);
+		//UctPolicy treePolicy = new UctPolicy();
 		for (int i = 0; i < ITERATIONS; i++) {
-			root.process(treePolicy);
+			//logger.info("Iter: {}", i);
+			Node node = root.treePolicy();
+			int reward = node.defaultPolicy();
+			node.backup(reward);
+		}
+		for(GameAction act: root.nextNodes.keySet()){
+			//logger.info("Action: {}", act);
+			if (root.nextNodes.get(act) != null){
+				logger.info("Action: {}, score: {}", act, root.nextNodes.get(act).totalReward);
+			}
 		}
 		GameAction bestAction = root.getBestAction();
 		logger.info("MCTS selected best action {}", bestAction);

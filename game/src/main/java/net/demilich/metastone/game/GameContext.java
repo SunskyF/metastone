@@ -443,7 +443,7 @@ public class GameContext implements Cloneable, IDisposable {
 	protected void onGameStateChanged() {
 	}
 
-	private void performAction(int playerId, GameAction gameAction) {
+	public void performAction(int playerId, GameAction gameAction) {
 		logic.performGameAction(playerId, gameAction);
 		onGameStateChanged();
 	}
@@ -626,7 +626,7 @@ public class GameContext implements Cloneable, IDisposable {
 		}
 	}
 
-	protected void startTurn(int playerId) {
+	public void startTurn(int playerId) {
 		turn++;
 		logic.startTurn(playerId);
 		onGameStateChanged();
