@@ -489,14 +489,14 @@ public class GameContext implements Cloneable, IDisposable {
 			while (playTurn()) {}    // 循环play，直到执行END_TURN action，结束当前player的当前turn （主要是调用behaviour的requestAction）
 			// add by sjx, 获取每一回合结束时的环境信息
 
-			fea.append(players);
+			fea.append(players, activePlayer);
 			winner_id = getWinningPlayerId();
 			if (getTurn() > GameLogic.TURN_LIMIT) {
 				break;
 			}
 		}
 
-		logger.info(players[0].getDeckName());
+//		logger.info(players[0].getDeckName());
 		int num_sim = 50;
 		fea.end(winner_id);
 		String player_class_0 = "Warrior" + "_" + players[0].getDeckName();
@@ -509,7 +509,7 @@ public class GameContext implements Cloneable, IDisposable {
 				players[1].getBehaviour().getName() + "_" +
 				fea_name + "_" + fea_num + "_" + num_sim + ".log";
 
-		//fea.appendWrite(filename);
+//		fea.appendWrite(filename);
 		endGame();
 		// add by sjx
 		//logger.info("{'GameHash':" + hashCode() + ",'Turn':" + turn + ",'winner':" + winner.getId() + "}");

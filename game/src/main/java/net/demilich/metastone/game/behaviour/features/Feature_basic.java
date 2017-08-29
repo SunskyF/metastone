@@ -19,6 +19,7 @@ public class Feature_basic {
     private List<List<Integer>> states = new ArrayList<>();
     private String fea_name;
     private final static Logger logger = LoggerFactory.getLogger(GreedyOptimizeMoveModel.class);
+    private int featureSingleLen = 0;
 
     public Feature_basic(int hash, String fea_name){
         this.hash_code = hash;
@@ -51,18 +52,24 @@ public class Feature_basic {
         }
     }
 
-    public void append(Player[] players){
+    public void append(Player[] players, int activePlayer){
         List<Integer> envState = new ArrayList<>();
         if (this.fea_name.equals("Basic")){
-            envState.addAll(players[0].getPlayerStateBasic());
-            envState.addAll(players[1].getPlayerStateBasic());
+            envState.add(activePlayer);
+            envState.addAll(players[activePlayer].getPlayerStateBasic());
+            featureSingleLen = envState.size();
+            envState.addAll(players[1-activePlayer].getPlayerStateBasic());
         }
         else if (this.fea_name.equals("feature_fh_0")){
-            envState.addAll(players[0].getPlayerStatefh0());
-            envState.addAll(players[1].getPlayerStatefh0());
+            envState.add(activePlayer);
+            envState.addAll(players[activePlayer].getPlayerStatefh0(false));
+            featureSingleLen = envState.size();
+            envState.addAll(players[1-activePlayer].getPlayerStatefh0(true));
         }
         else if (this.fea_name.equals("feature_fh_1")){
+            envState.add(activePlayer);
             envState.addAll(players[0].getPlayerStatefh1());
+            featureSingleLen = envState.size();
             envState.addAll(players[1].getPlayerStatefh1());
         }
         else{
@@ -82,22 +89,24 @@ public class Feature_basic {
         StringBuilder sb = new StringBuilder();
         for (int turn=0; turn < this.states.size(); turn++){
             sb.append("{'GameHash':" + this.hash_code + ",'Turn':" + (turn+1));
-            sb.append(",'player" + 0 + "':'");
+            sb.append(",'Active':'" + this.states.get(turn).get(0) + "','playerActive':'");
             int size = this.states.get(turn).size();
-            for (int fe=0; fe<size; fe++){
-                if (fe == 0 || fe == size / 2)
+//            logger.info("Feature Size: {}", size);
+
+            for (int fe=1; fe<size; fe++){
+                if (fe == 1 || fe == featureSingleLen)
                     sb.append(this.states.get(turn).get(fe));
                 else
                     sb.append("|" + this.states.get(turn).get(fe));
 
-                if (fe == size / 2 - 1){
+                if (fe == featureSingleLen - 1){
                     sb.append("'");
-                    sb.append(",'player" + 1 + "':'");
+                    sb.append(",'playerOpposite':'");
                 }
             }
-            sb.append("'}\n");
+            sb.append("'" + ",'winner':" + this.winner + "}\n");
         }
-        sb.append("{'GameHash':" + this.hash_code + ",'Turn':" + this.states.size() + ",'winner':" + this.winner + "}");
+//        sb.append("{'GameHash':" + this.hash_code + ",'Turn':" + this.states.size() + ",'winner':" + this.winner + "}");
         return sb.toString();
     }
 }

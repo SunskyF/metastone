@@ -181,7 +181,7 @@ public class PlayerConfigView extends VBox {
 		behaviourList.add(new GameTreePruneBestMove(new SupervisedLinearHeuristic())); // add by sjx, 尝试加深GameTree搜索深度
 
 //		behaviourList.add(new NoAggressionBehaviour());
-//		behaviourList.add(new FlatMonteCarlo(100));
+		behaviourList.add(new FlatMonteCarlo(100));
 		behaviourList.add(new MonteCarloTreeSearch());
 //		behaviourList.add(new GreedyOptimizeTurn(new WeightedHeuristic()));
 //		behaviourList.add(new GreedyOptimizeTurn(new ThreatBasedHeuristic(FeatureVector.getDefault()))); // 运行会出错，原因不明
@@ -189,6 +189,7 @@ public class PlayerConfigView extends VBox {
 		/* ------fh------- */
 		behaviourList.add(new LinearSA());
 		behaviourList.add(new LinearBatchSA());
+		behaviourList.add(new LinearES());
 		/* ------fh end--- */
 
 		behaviourBox.setItems(behaviourList);

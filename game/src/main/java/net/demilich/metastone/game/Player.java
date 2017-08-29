@@ -236,7 +236,7 @@ public class Player extends Entity {
 		return playerState;
 	}
 
-	public List<Integer> getPlayerStatefh0(){
+	public List<Integer> getPlayerStatefh0(boolean opposite){
 		List<Integer> playerState = new ArrayList<Integer>();
 
 		playerState.add(this.getHero().getHp());  // 0. 血量
@@ -276,23 +276,25 @@ public class Player extends Entity {
 		//playerState.addAll(Arrays.asList(summonManaLow, summonManaMid, summonManaHigh));
 
 		// 手牌相关信息
-		int cardMinionCount = 0; // 12.
-		int cardMinionMana = 0; // 13.
-		int cardSpellCount = 0; // 14.
-		int cardSpellMana = 0; // 15.
+		if (!opposite){
+			int cardMinionCount = 0; // 12.
+			int cardMinionMana = 0; // 13.
+			int cardSpellCount = 0; // 14.
+			int cardSpellMana = 0; // 15.
 
-		for (Card card : this.getHand()) {
+			for (Card card : this.getHand()) {
 
-			if (card.getCardType() == CardType.MINION) {
-				cardMinionCount += 1;
-				cardMinionMana += card.getBaseManaCost();
-			} else {  // 除了Spell法术牌以外，其实还有 CHOOSE_ONE 等其他手牌类型，但目前暂时不考虑
-				cardSpellCount += 1;
-				cardSpellMana += card.getBaseManaCost();
+				if (card.getCardType() == CardType.MINION) {
+					cardMinionCount += 1;
+					cardMinionMana += card.getBaseManaCost();
+				} else {  // 除了Spell法术牌以外，其实还有 CHOOSE_ONE 等其他手牌类型，但目前暂时不考虑
+					cardSpellCount += 1;
+					cardSpellMana += card.getBaseManaCost();
+				}
 			}
-		}
 
-		playerState.addAll(Arrays.asList(cardMinionCount, cardMinionMana, cardSpellCount, cardSpellMana));
+			playerState.addAll(Arrays.asList(cardMinionCount, cardMinionMana, cardSpellCount, cardSpellMana));
+		}
 
 		return playerState;
 	}

@@ -7,11 +7,14 @@ import net.demilich.metastone.game.Player;
 import net.demilich.metastone.game.actions.ActionType;
 import net.demilich.metastone.game.actions.GameAction;
 import net.demilich.metastone.game.behaviour.PlayRandomBehaviour;
+import net.demilich.metastone.game.behaviour.heuristic.IGameStateHeuristic;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class Node {
 	private final static Logger logger = LoggerFactory.getLogger(Node.class);
+	private final IGameStateHeuristic heuristic;
 
 	private GameContext state;
 	public Map<GameAction, Node> nextNodes = new HashMap<>();
@@ -20,15 +23,17 @@ class Node {
 	public int totalReward;
 	private final int player;
 	private Random random = new Random();
+	private final int depth = 2;
 	Node parent = null;
 
-	public Node(GameContext context, int player, Node parent) {
+	public Node(GameContext context, int player, Node parent, IGameStateHeuristic heuristic) {
 		this.player = player;
 		this.state = context.clone();
 		this.state.getPlayer(1-player).setBehaviour(new PlayRandomBehaviour());
 		this.parent = parent;
 		this.visitsCount = 0;
 		this.totalReward = 0;
+		this.heuristic = heuristic;
 		initActionMap();
 	}
 
@@ -64,7 +69,7 @@ class Node {
 			e.printStackTrace();
 			throw e;
 		}
-		Node child = new Node(newState, getPlayer(), this);
+		Node child = new Node(newState, getPlayer(), this, heuristic);
 		//logger.info("Next Player: {}, Next Valid Actions: {}", newState.getActivePlayerId(), newState.getValidActions());
 		//logger.info("Expand New Node Next Nodes Size: {}", child.nextNodes.size());
 
@@ -76,7 +81,7 @@ class Node {
 	int defaultPolicy(){
 		if (getState().gameDecided()) {
 			GameContext state = getState();
-			return state.getWinningPlayerId() == getPlayer() ? 1 : -1;
+			return state.getWinningPlayerId() == getPlayer() ? 1 : 0;
 		}
 
 		GameContext simulation = getState().clone();//随机对战直到结束
@@ -85,21 +90,21 @@ class Node {
 		}
 		//logger.info("Default Policy Winner: {}", simulation.getWinningPlayerId());
 		simulation.playFromState();
-		logger.info("Default Policy Winner: {}", simulation.getWinningPlayerId());
+//		logger.info("Default Policy Winner: {}", simulation.getWinningPlayerId());
 		//logger.info("Got Reward: {}", simulation.getWinningPlayerId() == getPlayer() ? 1 : -1);
-		return simulation.getWinningPlayerId() == getPlayer() ? 1 : -1;
+		return simulation.getWinningPlayerId() == getPlayer() ? 1 : 0;
 	}
 
 	void backup(int reward){
 		Node node = this;
 		//logger.info("Player: {}, Active: {}", node.getPlayer(), getState().getActivePlayerId());
 		if (node.getPlayer() == getState().getActivePlayerId()){
-			reward = -reward;
+//			reward = -reward;
 		}
 		int prePlayer = getState().getActivePlayerId();
 		while(node != null){
 			node.visitsCount += 1;
-			//logger.info("Reward: {}", reward);
+//			logger.info("Reward: {}", reward);
 			node.totalReward += reward;
 			node = node.parent;
 			if (node != null && node.getState().getActivePlayerId() != prePlayer){
@@ -183,7 +188,8 @@ class Node {
 				return current.expand();
 			} else {
 				//logger.info("Checkpoint 2");
-				current = current.bestChild(0.5);
+				current = current.bestChild(1);
+				break;
 			}
 		}
 		return current;
