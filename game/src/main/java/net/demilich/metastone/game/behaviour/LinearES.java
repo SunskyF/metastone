@@ -22,10 +22,9 @@ public class LinearES extends Behaviour {
     private static ArrayList<Float> rewardList = new ArrayList<>();
 
     private final static int N_KID = 10;                 // half of the training population
-    private final int N_GENERATION = 5000;         // training step
-    private final static double LR = 0.05;                    // learning rate
-    private final static double momentum = 0.9;
-    private final double SIGMA = 0.05;                 // mutation strength or step size
+    private final static double LR = 0.1;                    // learning rate
+    private final static double momentum = 0.5;
+    private final double SIGMA = 0.001;                 // mutation strength or step size
 
     private static int gameCount = 0;
     private final int batchSize = 2 * N_KID;
@@ -36,10 +35,13 @@ public class LinearES extends Behaviour {
 
     private static SGD optimizer = new SGD(feaNum, LR, momentum);
 
-    private double[] coef = {3.966110419559154, -2.4169705502104564, 8.747155488295219, 5.823024410074601, -3.4503442021459647, -8.587312082950975, -0.11506715680773065, 0.0792109105317904, -3.8571690123302087, 0.02598850156605708, -1.544141907557514,
-            2.7989451868164696, 2.1288287762202995, -4.386831292592509, 5.4812869663731245, 1.8220898841735311, -2.728902203672761, -5.575826746582367, 1.7498977161809357,
-            5.422017794523841, -6.578209778944436, -5.31992256597322, 3.081707581032312, -6.209864088735404, 1.6256958912945998, -7.134837503154441, 3.8747361360708683, -2.306484497059981,
-            2.124463004503334, -7.341767865516911, -1.6965733781488535, -5.892826746972325}; // 32, N(0, 1), np.random.normal(0, 1, 32)
+    private double[] coef = {-0.02720876,  1.36188549,  0.11338756,  0.65414721,  1.58445377,
+            0.37074123, -1.25416617, -0.39662372,  1.1987753 , -0.15725062,
+            -2.75032035, -0.00563931,  0.31177766, -0.21569988,  1.60154003,
+            -0.88498952, -0.10140752,  0.01068558,  0.80651281,  1.48053426,
+            -1.34961829,  1.25708946,  0.35363696, -1.14820727,  0.222536  ,
+            0.38519943, -1.06496087,  0.54320185, -0.09864067,  0.94326665,
+            0.45094126, -0.83054591}; // 32, N(0, 1), np.random.normal(0, 1, 32)
 
     double[] util_ = new double[N_KID * 2];
     private static double[] utility = new double[N_KID * 2];
@@ -60,7 +62,7 @@ public class LinearES extends Behaviour {
         for (int i = 0; i < base; ++i){
             utility[i] = util_[i] / sum - 1.0 / base;
         }
-        logger.info("Utility: {}", utility);
+//        logger.info("Utility: {}", utility);
     }
 
     @Override
@@ -124,8 +126,8 @@ public class LinearES extends Behaviour {
         assert (envState.size() == feaNum);
         double score = 0;
         for (int i = 0; i < parWeight.length; i++){
-//            score +=  (parWeight[i] + SIGMA * randomWeight[i]) * envState.get(i);
-            score += parWeight[i] * envState.get(i);
+            score +=  (parWeight[i] + SIGMA * randomWeight[i]) * envState.get(i);
+//            score += parWeight[i] * envState.get(i);
         }
         return score;
     }
@@ -133,7 +135,8 @@ public class LinearES extends Behaviour {
     private void updateParWeight(){
         for(int i=0; i<parWeight.length; i++){
             randomWeight[i] = random.nextGaussian();
-            parWeight[i] += Sign(gameCount) * SIGMA * randomWeight[i];
+//            logger.info("Random: {}", Sign(gameCount) * SIGMA * randomWeight[i]);
+//            parWeight[i] += Sign(gameCount) * SIGMA * randomWeight[i];
         }
     }
 
@@ -173,8 +176,7 @@ public class LinearES extends Behaviour {
         if (reward > 0){
             batchWinCount++;
         }
-
-//        logger.info("Reward: {}", reward);
+        logger.info("Reward: {}", reward);
         // 执行一个batchSize之后
         if(gameCount%batchSize == 0){
             logger.info("BatchCount: {}, BatchWinCount: {}, BatchSize: {}", batchCount, batchWinCount, batchSize);
@@ -193,16 +195,21 @@ public class LinearES extends Behaviour {
             int[] kids_rank = argsort(rewardList.toArray(rewardArray), true);
 //            logger.info("Kids Rank: {}", kids_rank);
             for (int i = 0; i < rewardList.size(); ++i){ // number n
+//                logger.info("paraList: {}", paraList.get(i));
                 for(int j = 0; j < feaNum; ++j){
                     cumulative_update[j] += utility[i] * Sign(kids_rank[i]) * paraList.get(i)[j];
                 }
             }
+//            logger.info("Cumulative: {}", cumulative_update);
+//            logger.info("Value: {}", 2 * N_KID * SIGMA);
             for(int j = 0; j < feaNum; ++j){
                 cumulative_update[j] /= 2 * N_KID * SIGMA;
             }
+//            logger.info("Cumulative: {}", cumulative_update);
             double[] gradients = optimizer.get_gradient(cumulative_update);
             for(int j = 0; j < feaNum; ++j){
                 parWeight[j] += gradients[j];
+//                logger.info("par: {}, grad: {}", parWeight[j], gradients[j]);
             }
 //            logger.info("Para: {}", parWeight);
             paraList.clear();

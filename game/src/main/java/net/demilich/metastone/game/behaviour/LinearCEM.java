@@ -21,7 +21,7 @@ public class LinearCEM extends Behaviour {
 
 	private final static Logger logger = LoggerFactory.getLogger(LinearCEM.class);
 	private Random random = new Random();
-	private final static int feaNum = 30;
+	private final static int feaNum = 28;
 	private static double[] parMean = new double[feaNum];
 	private static double[] parVar = new double[feaNum];
 	private double[] parWeight = new double[feaNum];
@@ -100,9 +100,9 @@ public class LinearCEM extends Behaviour {
 		if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
 			return Float.POSITIVE_INFINITY;
 		}
-		List<Integer> envState = player.getPlayerState();
-		envState.addAll(opponent.getPlayerState());
-
+		List<Integer> envState = player.getPlayerStatefh0(false);
+		envState.addAll(opponent.getPlayerStatefh0(false));
+//		logger.info("Par Weight: {}, envState: {}", parWeight.length, envState.size());
 		double score = 0;
 		for (int i = 0; i < parWeight.length; i++){
 			score += parWeight[i]*envState.get(i);

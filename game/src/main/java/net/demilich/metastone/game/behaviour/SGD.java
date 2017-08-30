@@ -1,6 +1,11 @@
 package net.demilich.metastone.game.behaviour;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SGD{
+    private final static Logger logger = LoggerFactory.getLogger(SGD.class);
+
     double[] v;
     double lr;
     double momentum;

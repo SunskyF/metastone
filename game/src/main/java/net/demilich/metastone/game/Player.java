@@ -236,7 +236,7 @@ public class Player extends Entity {
 		return playerState;
 	}
 
-	public List<Integer> getPlayerStatefh0(boolean opposite){
+	public List<Integer> getPlayerStatefh0(boolean opposite){// 是不是对手，false不是
 		List<Integer> playerState = new ArrayList<Integer>();
 
 		playerState.add(this.getHero().getHp());  // 0. 血量
@@ -276,7 +276,7 @@ public class Player extends Entity {
 		//playerState.addAll(Arrays.asList(summonManaLow, summonManaMid, summonManaHigh));
 
 		// 手牌相关信息
-		if (!opposite){
+		if (!opposite){// 如果不是对手
 			int cardMinionCount = 0; // 12.
 			int cardMinionMana = 0; // 13.
 			int cardSpellCount = 0; // 14.
