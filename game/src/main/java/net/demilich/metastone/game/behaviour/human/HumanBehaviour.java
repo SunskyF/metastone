@@ -89,8 +89,9 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 	@Override
 	public GameAction requestAction(GameContext context, Player player, List<GameAction> validActions) {
 		// Sjx, output info
+
+//		logger.info("num of valid actions {}, they are {}.", validActions.size(), validActions);
 		/*
-		logger.info("num of valid actions {}, they are {}.", validActions.size(), validActions);
 		logger.info("player state vec: {}.", player.getPlayerState());
 		logger.info("opp state vec: {}.", context.getOpponent(player).getPlayerState());
 		logger.info("Threat Level remainingHp:{}", calculateThreatLevel(context, player.getId()));

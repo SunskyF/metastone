@@ -1,6 +1,7 @@
 package net.demilich.metastone.game.behaviour.mcts;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -42,7 +43,7 @@ public class MonteCarloTreeSearch extends Behaviour {
 		logger.info("HP: {}, {}", context.getPlayer(0).getHero().getHp(), context.getPlayer(1).getHero().getHp());
 		Random random = new Random();
 		if (validActions.size() == 1) {
-			logger.info("MCTS selected best action (Only one choice): {}", validActions.get(0));
+//			logger.info("MCTS selected best action (Only one choice): {}", validActions.get(0));
 			return validActions.get(0);
 		}
 
@@ -54,21 +55,33 @@ public class MonteCarloTreeSearch extends Behaviour {
 
 		}
 
-		Node root = new Node(context, player.getId(), null, new SupervisedLinearHeuristic());
-		//UctPolicy treePolicy = new UctPolicy();
+		HashMap<List<Integer>, Double> storeValue = new HashMap<>();
+		HashMap<List<Integer>, Node> storeNode = new HashMap<>();
+
+		Node root = new Node(context, player.getId(), null, new SupervisedLinearHeuristic(), storeNode, storeValue, null);
+		Node.resetSimCount();
+
 		for (int i = 0; i < ITERATIONS; i++) {
 			//logger.info("Iter: {}", i);
+			root.setSimCnt(i);
 			Node node = root.treePolicy();
 			int reward = node.defaultPolicy();
 			node.backup(reward);
 		}
-		for(GameAction act: root.nextNodes.keySet()){
-			if (root.nextNodes.get(act) != null){
-				logger.info("Action: {}, score: {}, visit: {}", act, root.nextNodes.get(act).totalReward, root.nextNodes.get(act).visitsCount);
-			}
-		}
+//		for(GameAction act: root.nextNodes.keySet()){
+//			if (root.nextNodes.get(act) != null){
+//				logger.info("Action: {}, score: {}, visit: {}", act, root.nextNodes.get(act).totalReward, root.nextNodes.get(act).visitsCount);
+//				Node nextNode = root.nextNodes.get(act);
+//				for (GameAction nextAct: nextNode.nextNodes.keySet()){
+//					if (nextNode.nextNodes.get(nextAct) != null) {
+//						logger.info("	Next Action: {}, score: {}, visit: {}", nextAct, nextNode.nextNodes.get(nextAct).totalReward,
+//								nextNode.nextNodes.get(nextAct).visitsCount);
+//					}
+//				}
+//			}
+//		}
 		GameAction bestAction = root.getBestAction();
-		logger.info("MCTS selected best action {}", bestAction);
+//		logger.info("MCTS selected best action {}", bestAction);
 		return bestAction;
 	}
 

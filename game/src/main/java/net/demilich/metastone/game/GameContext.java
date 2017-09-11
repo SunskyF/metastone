@@ -474,6 +474,7 @@ public class GameContext implements Cloneable, IDisposable {
 		init();
 		//StringBuilder sb = new StringBuilder();
 		//int nowTurn = 0;
+//		logger.info("Deck: {}", players[0].getDeck().toList());
 		int winner_id = 0;
 
 		// feature
@@ -527,6 +528,16 @@ public class GameContext implements Cloneable, IDisposable {
 
 		endGame();
 
+	}
+
+	public void playFromState(int endTurn){
+		while (!gameDecided()) {
+			startTurn(getActivePlayer().getId());
+			while (playTurn()) {}
+			if (getTurn() > endTurn) {
+				break;
+			}
+		}
 	}
 
 	public boolean playTurn() {

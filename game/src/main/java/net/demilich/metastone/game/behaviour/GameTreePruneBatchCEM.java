@@ -20,7 +20,7 @@ public class GameTreePruneBatchCEM extends Behaviour {
 
 	private final static Logger logger = LoggerFactory.getLogger(GameTreePruneBatchCEM.class);
 	private Random random = new Random();
-	private final static int feaNum = 88;
+	private final static int feaNum = 120;//88
 	private static double[] parMean = new double[feaNum];
 	private static double[] parVar = new double[feaNum];
 	private double[] parWeight = new double[feaNum];
@@ -35,6 +35,7 @@ public class GameTreePruneBatchCEM extends Behaviour {
 	private final static double topRatio = 0.25;
 	private final static int maxNumMoveSearched = 6;
 	private final IGameStateHeuristic heuristic;
+	private static HashMap<List<Integer>, Double> store = new HashMap<>();
 
 	// 初始化par均值
 	double[] coef0 = {0.760326412267397, 1.0589083919017865, -0.9400597870303837, 1.8744045092345258, 0.40236541366111334, 0.7418310137683413, 0.484131665708331, -0.7552493510082674, -0.49584676055695726, -0.16698138431239073, 0.36754468394420575, 1.4864556790810401, 1.1277694490216241, -0.19385547308776607, -1.0543152353607872, -0.2839165182591483, -1.4812832356356582, 0.3152121620740715, 0.0576844177240588, 1.1548436693125355, 1.9800036654926079, -0.3901963327635122, -0.7253225619942502, 0.18436967723674624, -0.6734730405335783, 0.5670641396548124, 0.639198399863008, -2.323129891333293, -1.0595513754902268, -0.804768708781494, 0.049672910287548194, 0.45954962674589844, -1.2431053666129253, 1.453612258307805, 0.26218920504452126, -2.0395371675289904, 0.18812695989268322, -1.328556982125309, -0.09499834083064819, -1.3747489091708807, 0.4488316541321531, 1.557497817592364, 1.0913026067029423, -0.597424707768485, -0.8361789076762033, -0.30777376598675443, -0.12238371097680156, 1.5841665240946965, -1.6267115776236394, -0.8061619411443898, -0.6975022521655243, 0.8245686938375283, -0.1718025408001051, -1.965065224429499, -1.59218011905894, 0.5600873334680981, -0.1825971189270253, -0.584501980650917, 2.416352484932763, -0.994680624848772, 1.9001580351986664, 0.11200461958090441, -1.149550315376586, 0.08082039517078825, -0.16580058883653237, -1.571984435874137, -2.4570940338800336, -0.15228687237889565, -0.1436000925996575, -0.06952984168734147, 0.8184547686840771, 0.6615721068181535, -0.2850074919127527, 0.16685275047289128, -0.01777378273904684, -1.705839086129454, -0.22775080851185345, 1.740876345330731, 0.2765548960828773, -0.3556647399330023, 0.4369754630045146, 0.679533140719245, 0.7003181586567979, 0.3695026344221172, -0.45705065513923954, -0.5747965912920181, 1.4643969249437774, 3.3167090234141243};
@@ -42,7 +43,7 @@ public class GameTreePruneBatchCEM extends Behaviour {
 	public GameTreePruneBatchCEM(IGameStateHeuristic heuristic) {
 		this.heuristic = heuristic;
 		for(int i=0; i<feaNum; i++){
-			parMean[i] = coef0[i]; //2*random.nextDouble() - 1;
+			parMean[i] = 2*random.nextDouble() - 1; //2*random.nextDouble() - 1;
 			parVar[i] = 0.25;
 		}
 		updateParWeight();
@@ -76,13 +77,15 @@ public class GameTreePruneBatchCEM extends Behaviour {
 			return validActions.get(0);
 		}
 
-		int depth = 6;
+		int depth = 8;
 		// when evaluating battlecry and discover actions, only optimize the immediate value （两种特殊的action）
 		if (validActions.get(0).getActionType() == ActionType.BATTLECRY) {
 			depth = 0;
 		} else if (validActions.get(0).getActionType() == ActionType.DISCOVER) {  // battlecry and discover actions一定会在第一个么？
 			return validActions.get(0);
 		}
+
+		store.clear();//每次都是只对一次搜索
 
 		SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
 		for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
@@ -130,6 +133,16 @@ public class GameTreePruneBatchCEM extends Behaviour {
 			simulationResult.dispose();  //GameContext环境每次仿真完销毁
 		}
 
+		Player player = simulation.getPlayer(playerId);
+		Player opponent = simulation.getOpponent(player);
+
+		List<Integer> envState = player.getPlayerStatefh1(false);
+		envState.addAll(opponent.getPlayerStatefh1(false));
+
+		if (store.containsKey(envState)){
+			return store.get(envState);
+		}
+
 		double score = Float.NEGATIVE_INFINITY;
 		int k = 0;
 		for(GameAction gameAction: scoreActionMap.values()){
@@ -139,6 +152,8 @@ public class GameTreePruneBatchCEM extends Behaviour {
 				break;
 			}
 		}
+		store.put(envState, score);
+
 		return score;
 	}
 
@@ -186,20 +201,10 @@ public class GameTreePruneBatchCEM extends Behaviour {
 		if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
 			return Float.POSITIVE_INFINITY;
 		}
-		List<Integer> envState = player.getPlayerState();
-		envState.addAll(opponent.getPlayerState());
+		List<Integer> envState = player.getPlayerStatefh1(false);
+		envState.addAll(opponent.getPlayerStatefh1(false));
 
-		// 威胁等级标识特征
-		int threatLevelHigh= 0;
-		int threatLevelMiddle = 0;
-		int threatLevel = calculateThreatLevel(context, playerId);
-		if(threatLevel == 2){
-			threatLevelHigh = 1;
-		}else if(threatLevel == 1){
-			threatLevelMiddle = 1;
-		}
-		envState.add(threatLevelHigh);
-		envState.add(threatLevelMiddle);
+//		logger.info("Feature Number: {}", envState.size());
 
 		double score = 0;
 		for (int i = 0; i < parWeight.length; i++){
@@ -277,7 +282,7 @@ public class GameTreePruneBatchCEM extends Behaviour {
 		if(playerId == winningPlayerId){
 			batchWinCnt += 1;
 		}
-
+//		logger.info("Win: {}", winningPlayerId);
 		// 一个Batch结束
 		if(gameCount == batchSize){
 			logger.info("batchCount: {}, batchWinCnt: {}", batchCount, batchWinCnt);

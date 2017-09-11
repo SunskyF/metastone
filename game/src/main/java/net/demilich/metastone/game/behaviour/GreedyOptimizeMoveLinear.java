@@ -53,11 +53,11 @@ public class GreedyOptimizeMoveLinear extends Behaviour {
 			GameContext simulationResult = simulateAction(context.clone(), player, gameAction);  //假设执行gameAction，得到之后的game context
 			double gameStateScore = heuristic.getScore(simulationResult, player.getId());	     //heuristic评估执行gameAction之后的游戏局面的分数
 			//logger.info("Score: {}", gameStateScore);
-			logger.debug("Action {} gains score of {}", gameAction, gameStateScore);
+			logger.info("Action {} gains score of {}", gameAction, gameStateScore);
 			if (gameStateScore > bestScore) {		// 记录得分最高的action
 				bestScore = gameStateScore;
 				bestAction = gameAction;
-				logger.debug("BEST ACTION SO FAR id:{}", bestAction.hashCode());
+				logger.info("BEST ACTION SO FAR id:{}", bestAction.hashCode());
 			}
 			simulationResult.dispose();  //GameContext环境每次仿真完销毁
 

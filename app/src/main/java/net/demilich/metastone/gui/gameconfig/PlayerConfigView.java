@@ -189,7 +189,9 @@ public class PlayerConfigView extends VBox {
 		/* ------fh------- */
 		behaviourList.add(new LinearSA());
 		behaviourList.add(new LinearBatchSA());
-		behaviourList.add(new LinearES());
+		behaviourList.add(new LinearBatchES());
+		behaviourList.add(new LinearNdTest());
+//		behaviourList.add(new LinearTD());
 		/* ------fh end--- */
 
 		behaviourBox.setItems(behaviourList);

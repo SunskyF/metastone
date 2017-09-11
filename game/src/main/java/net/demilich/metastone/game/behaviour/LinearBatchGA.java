@@ -3,33 +3,30 @@ package net.demilich.metastone.game.behaviour;
 import net.demilich.metastone.game.Attribute;
 import net.demilich.metastone.game.GameContext;
 import net.demilich.metastone.game.Player;
-import net.demilich.metastone.game.actions.ActionType;
 import net.demilich.metastone.game.actions.GameAction;
 import net.demilich.metastone.game.cards.Card;
 import net.demilich.metastone.game.entities.heroes.Hero;
 import net.demilich.metastone.game.entities.heroes.HeroClass;
 import net.demilich.metastone.game.entities.minions.Minion;
 import net.demilich.metastone.game.logic.GameLogic;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-// 尝试直接使用CEM (Noisy Cross Entropy Method) 方法优化Linear value function中的参数, 但现在会往前多步后评估局面，而不是GreedyBest
+// 尝试直接使用CEM (Noisy Cross Entropy Method) 方法优化Linear value function中的参数
+// 相对于Linear CEM中优化一局结束时的HpDiff， Linear Batch CEM中以优化一个batch的对局的胜率为目标
+// 也就是说一组参数下跑batch局，以这组参数和这batch局的胜率作为一个样本
 
-public class GameTreeBatchCEMML extends Behaviour {
+public class LinearBatchGA extends Behaviour {
 
-    private final static Logger logger = LoggerFactory.getLogger(GameTreeBatchCEMML.class);
+    private final static Logger logger = LoggerFactory.getLogger(LinearBatchCEM.class);
     private Random random = new Random();
     private final static int feaNum = 88;
-    private static int depth = 2;
-    private static INDArray parMean = Nd4j.zeros(depth, feaNum);
-    private static INDArray parVar= Nd4j.valueArrayOf(depth, feaNum, 0.25);
-    private static INDArray parWeight = Nd4j.zeros(depth, feaNum);
-
-    private static ArrayList<INDArray> paraList = new ArrayList<>();
+    private static double[] parMean = new double[feaNum];
+    private static double[] parVar = new double[feaNum];
+    private double[] parWeight = new double[feaNum];
+    private static ArrayList<double[]> paraList = new ArrayList<>();
     private static SortedMap<Integer, List<Integer>> rewardMap = new TreeMap<>(Comparator.reverseOrder());
     private static int gameCount = 0;
     private static int batchCount = 0;
@@ -39,24 +36,24 @@ public class GameTreeBatchCEMML extends Behaviour {
     private final static int updateBatchSize = 20;
     private final static double topRatio = 0.25;
 
-    // 初始化par均值
-//	double[] coef0 = {-0.4026557850528921, -1.4777779620148956, 0.4807519990112861, 0.17256270698849252, -3.0048219754608025, 1.2471351008867102, 0.0984930660725887, 0.10428128567415333, 2.305958663224414, 1.1694585122714134, 1.6161794705279806, -1.2488627310061495, 0.7849320841015818, -0.44585583054203787, -0.5739923937489321, -0.15309219515362008, 0.10443397417923186, -1.6386810620082035, -1.5720069467333566, 1.142923451103324, -1.8273642125940401, 3.9607177425623874, -1.5590593357541482, -1.8584667661464103, -0.7176115097989136, -1.9578732692028225, -1.555219474560269, 1.260854506957219, -2.110174979376178, 0.6617734109303619};
-
-    public GameTreeBatchCEMML() {
-        logger.info("parVar: {}", parVar);
+    public LinearBatchGA() {
+        for(int i=0; i<feaNum; i++){
+            parMean[i] = 2*random.nextDouble() - 1;
+            parVar[i] = 0.25;
+        }
         updateParWeight();
     }
 
     @Override
     public String getName() {
-        return "CEM-Batch-Tree-ML";
+        return "GA-Batch-Linear";
     }
 
     @Override
     public List<Card> mulligan(GameContext context, Player player, List<Card> cards) {
         List<Card> discardedCards = new ArrayList<Card>();
         for (Card card : cards) {
-            if (card.getBaseManaCost() >= 4 || card.getCardId()=="minion_patches_the_pirate") {  //耗法值>=4的不要, Patches the Pirate这张牌等他被触发召唤
+            if (card.getBaseManaCost() >= 4) {  //耗法值>=4的不要
                 discardedCards.add(card);
             }
         }
@@ -70,46 +67,29 @@ public class GameTreeBatchCEMML extends Behaviour {
             return validActions.get(0);
         }
 
-        depth = 2;
-        // when evaluating battlecry and discover actions, only optimize the immediate value （两种特殊的action）
-        if (validActions.get(0).getActionType() == ActionType.BATTLECRY) {
-            depth = 0;
-
-        } else if (validActions.get(0).getActionType() == ActionType.DISCOVER) {  // battlecry and discover actions一定会在第一个么？
-            return validActions.get(0);
-        }
-
+        // get best action at the current state and the corresponding Q-score
         GameAction bestAction = validActions.get(0);
         double bestScore = Double.NEGATIVE_INFINITY;
-
         for (GameAction gameAction : validActions) {
-            double score = alphaBeta(context, player.getId(), gameAction, depth);  // 对每一个可能action，使用alphaBeta递归计算得分
-            if (score > bestScore) {
+            GameContext simulationResult = simulateAction(context.clone(), player, gameAction);  //假设执行gameAction，得到之后的game context
+            double gameStateScore = evaluateContext(simulationResult, player.getId());  //heuristic.getScore(simulationResult, player.getId());	     //heuristic评估执行gameAction之后的游戏局面的分数
+            if (gameStateScore > bestScore) {		// 记录得分最高的action
+                bestScore = gameStateScore;
                 bestAction = gameAction;
-                bestScore = score;
             }
+            simulationResult.dispose();  //GameContext环境每次仿真完销毁
         }
+
         return bestAction;
     }
 
-    private double alphaBeta(GameContext context, int playerId, GameAction action, int depth) {
-        GameContext simulation = context.clone();  // clone目前环境
-        simulation.getLogic().performGameAction(playerId, action);  // 在拷贝环境中执行action
-        if (depth == 0 || simulation.getActivePlayerId() != playerId || simulation.gameDecided()) {  // depth层递归结束、发生玩家切换（我方这轮打完了）或者比赛结果已定时，返回score
-            return evaluateContext(simulation, playerId);
-        }
-
-        List<GameAction> validActions = simulation.getValidActions();  //执行完一个action之后，获取接下来可以执行的action
-
-        double score = Float.NEGATIVE_INFINITY;
-
-        for (GameAction gameAction : validActions) {
-            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
-            if (score >= 100000) {
-                break;
-            }
-        }
-        return score;
+    private GameContext simulateAction(GameContext simulation, Player player, GameAction action) {
+        GameLogic.logger.debug("");
+        GameLogic.logger.debug("********SIMULATION starts********** " + simulation.getLogic().hashCode());
+        simulation.getLogic().performGameAction(player.getId(), action);   // 在simulation GameContext中执行action，似乎是获取logic模块来执行action的
+        GameLogic.logger.debug("********SIMULATION ends**********");
+        GameLogic.logger.debug("");
+        return simulation;
     }
 
     private static int calculateThreatLevel(GameContext context, int playerId) {
@@ -117,9 +97,9 @@ public class GameTreeBatchCEMML extends Behaviour {
         Player player = context.getPlayer(playerId);
         Player opponent = context.getOpponent(player);
         for (Minion minion : opponent.getMinions()) {
-            damageOnBoard += minion.getAttack();
+            damageOnBoard += minion.getAttack(); // * minion.getAttributeValue(Attribute.NUMBER_OF_ATTACKS);
         }
-        damageOnBoard += getHeroDamage(opponent.getHero());  //对方随从 + 英雄的攻击力 (暂时没有考虑风怒、冻结等的影响，因为 之前 minion.getAttributeValue(Attribute.NUMBER_OF_ATTACKS)经常得到0)
+        damageOnBoard += getHeroDamage(opponent.getHero());  //对方随从 + 英雄的攻击力
 
         int remainingHp = player.getHero().getEffectiveHp() - damageOnBoard;  // 根据减去对方伤害后我方剩余血量来确定威胁等级
         if (remainingHp < 1) {
@@ -170,19 +150,19 @@ public class GameTreeBatchCEMML extends Behaviour {
         }
         envState.add(threatLevelHigh);
         envState.add(threatLevelMiddle);
-
+//		logger.info("Feature Number: {}", envState.size());
         double score = 0;
-//        for (int i = 0; i < parWeight.length; i++){
-//            score += parWeight[i]*envState.get(i);
-//        }
+        for (int i = 0; i < parWeight.length; i++){
+            score += parWeight[i]*envState.get(i);
+        }
         return score;
     }
 
     private void updateParWeight(){
         // 根据参数的均值和方差，按正态分布生成parWeight
-//        for(int i=0; i<parWeight.length; i++){
-//            parWeight[i] = parMean[i] + Math.sqrt(parVar[i])*random.nextGaussian();
-//        }
+        for(int i=0; i<parWeight.length; i++){
+            parWeight[i] = parMean[i] + Math.sqrt(parVar[i])*random.nextGaussian();
+        }
     }
 
     private double calcMean(double[] paras){
@@ -213,22 +193,22 @@ public class GameTreeBatchCEMML extends Behaviour {
         // 取出reward最好的若干次的参数
         for(Integer reward: rewardMap.keySet()){
             for(Integer ind: rewardMap.get(reward)){
-//                double[] para = paraList.get(ind);
-//                for(int i=0; i<para.length; i++){
-//                    topPara[i][k] = para[i];
-//                }
-//                k++;
-//                if(k == 1){
-//                    bestPara = para.clone();
-//                }
+                double[] para = paraList.get(ind);
+                for(int i=0; i<para.length; i++){
+                    topPara[i][k] = para[i];
+                }
+                k++;
+                if(k == 1){
+                    bestPara = para.clone();
+                }
                 meanTopReward += reward;
                 if(k >= topNum){
                     meanTopReward /= topNum;
                     logger.info("################# iterNum: {}, meanTopReward: {}, bestPara: {} ##################", iterNum, meanTopReward, bestPara);
                     // 更新均值和方差
                     for(int i=0; i<feaNum; i++){
-//                        this.parMean[i] = calcMean(topPara[i]);
-//                        this.parVar[i] = calcVar(topPara[i]) + Math.max(0.1 - 0.01*iterNum, 0);  // 添加逐渐减小的Noise， 可调整
+                        this.parMean[i] = calcMean(topPara[i]);
+                        this.parVar[i] = calcVar(topPara[i]) + Math.max(0.1 - 0.01*iterNum, 0);  // 添加逐渐减小的Noise， 可调整
                     }
                     logger.info("########## rewardMap: {}, parMean: {}, parVar: {}", rewardMap, parMean, parVar);
                     // 清空这一个batch的数据
@@ -242,7 +222,6 @@ public class GameTreeBatchCEMML extends Behaviour {
 
     @Override
     public void onGameOver(GameContext context, int playerId, int winningPlayerId) {
-        // GameOver的时候会跳入这个函数
         gameCount++;
         if(playerId == winningPlayerId){
             batchWinCnt += 1;
@@ -259,7 +238,7 @@ public class GameTreeBatchCEMML extends Behaviour {
                 rewardMap.put(reward, new ArrayList<>(Arrays.asList(batchCount)));
             }
             // 保存这一Batch使用的模型参数
-//            paraList.add(parWeight.clone());
+            paraList.add(parWeight.clone());
             batchCount++;
             gameCount = 0;
             batchWinCnt = 0;

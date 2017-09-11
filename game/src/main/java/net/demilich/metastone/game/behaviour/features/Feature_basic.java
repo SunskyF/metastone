@@ -68,9 +68,9 @@ public class Feature_basic {
         }
         else if (this.fea_name.equals("feature_fh_1")){
             envState.add(activePlayer);
-            envState.addAll(players[0].getPlayerStatefh1());
+            envState.addAll(players[0].getPlayerStatefh1(false));
             featureSingleLen = envState.size();
-            envState.addAll(players[1].getPlayerStatefh1());
+            envState.addAll(players[1].getPlayerStatefh1(true));
         }
         else{
             logger.info("No known feature");

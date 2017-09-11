@@ -21,10 +21,12 @@ public class GameTreeBatchCEM extends Behaviour {
 
 	private final static Logger logger = LoggerFactory.getLogger(GameTreeBatchCEM.class);
 	private Random random = new Random();
-	private final static int feaNum = 88;
-	private static double[] parMean = new double[feaNum];
-	private static double[] parVar = new double[feaNum];
-	private double[] parWeight = new double[feaNum];
+	private final static int stage = 2;
+	private final static int feaNum = 88; // 88
+	private final static int totalFea = feaNum * stage;
+	private static double[] parMean = new double[totalFea];
+	private static double[] parVar = new double[totalFea];
+	private double[] parWeight = new double[totalFea];
 	private static ArrayList<double[]> paraList = new ArrayList<>();
 	private static SortedMap<Integer, List<Integer>> rewardMap = new TreeMap<>(Comparator.reverseOrder());
 	private static int gameCount = 0;
@@ -34,15 +36,23 @@ public class GameTreeBatchCEM extends Behaviour {
 	private final static int batchSize = 50;
 	private final static int updateBatchSize = 20;
 	private final static double topRatio = 0.25;
+	private int nowStage = 0;
 
 	// 初始化par均值
+	// 30
 //	double[] coef0 = {-0.4026557850528921, -1.4777779620148956, 0.4807519990112861, 0.17256270698849252, -3.0048219754608025, 1.2471351008867102, 0.0984930660725887, 0.10428128567415333, 2.305958663224414, 1.1694585122714134, 1.6161794705279806, -1.2488627310061495, 0.7849320841015818, -0.44585583054203787, -0.5739923937489321, -0.15309219515362008, 0.10443397417923186, -1.6386810620082035, -1.5720069467333566, 1.142923451103324, -1.8273642125940401, 3.9607177425623874, -1.5590593357541482, -1.8584667661464103, -0.7176115097989136, -1.9578732692028225, -1.555219474560269, 1.260854506957219, -2.110174979376178, 0.6617734109303619};
+	// 88
+	double[] coef0 = {-0.042435191603752365, 0.40616696103829747, -0.6076077508888231, 0.7272720043082649, 0.20202105394258138, 0.6313194790542382, 0.018128759542628426, -0.6714877445764238, -1.4053075565764823, -0.5645665894497521, 0.7847370830575832, 0.6027815061309918, 0.11944932690773696, 0.16639617889671887, -0.596884142191235, -1.303442871303662, -0.7689279203049311, 0.08684843915912507, 0.2194776555521321, 0.3016746685481717, 1.2937229089380362, -0.3867675424274616, 0.1076755527545435, -0.2732232995785765, -1.2185303120526827, 0.44953477632896055, 0.4381595843767112, -0.42740268057811853, -0.7593509953652382, -0.25454178333555133, -0.06777467174623754, -0.29690084326922533, 0.139006279981216, -0.19757466435610388, -0.10281368164119024, -1.0318842806816224, 0.6697091092076944, -1.5504887549148079, -0.46513049548185065, -0.224168675085325, 0.3363897344845124, 1.0077572813673379, 1.790712443198513, -0.7974532011373017, -0.034379835513210874, -0.53728431299419, 0.27911211300832656, 1.77296275442259, -0.49676110743592145, 0.1543295718827667, -0.8465960481972349, 0.7616942260912617, -0.09467554276581093, -2.0242808280175053, -0.42044884895501194, 0.22098060325157623, -0.7124548934850738, -0.46505479523846677, 0.48943013064063173, -1.0814450906779396, 1.494202436696506, -0.2253465154462635, -0.45375551865466784, 0.23376970921025383, -0.31330715778322343, -0.36119276257174077, -0.643335795514266, -9.750616593995213E-4, 0.38910933337215503, 0.09884268820871578, 0.37335447500509883, 0.8047764493080031, -0.4720077472112548, 0.264490464098162, 0.4104466046033848, -1.3686731855897478, -0.3840621668768126, 1.0668114179340098, 0.2664341808467372, -0.9317865799520276, 0.7754792723230315, 0.23662829519630627, -0.4460817116862948, -0.010734604936549205, 0.08007887984653188, -0.7490589136711456, 0.32186845493246313, 1.4714419204754288};
 
 	public GameTreeBatchCEM() {
-		for(int i=0; i<feaNum; i++){
-			parMean[i] = 0.0; //coef0[i]; //2*random.nextDouble() - 1;
-			parVar[i] = 0.25;
+		logger.info("{}", coef0.length);
+		for (int s = 0; s < stage; ++s){
+			for(int i=0; i<feaNum; i++){
+				parMean[s * feaNum + i] = coef0[i]; //2*random.nextDouble() - 1;
+				parVar[s * feaNum + i] = 0.25;
+			}
 		}
+
 		updateParWeight();
 	}
 
@@ -78,6 +88,11 @@ public class GameTreeBatchCEM extends Behaviour {
 		}
 
 		GameAction bestAction = validActions.get(0);
+		if (context.getTurn() < 10)
+			nowStage = 0;
+		else
+			nowStage = 1;
+
 		double bestScore = Double.NEGATIVE_INFINITY;
 
 		for (GameAction gameAction : validActions) {
@@ -154,9 +169,12 @@ public class GameTreeBatchCEM extends Behaviour {
 		if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
 			return Float.POSITIVE_INFINITY;
 		}
+//		List<Integer> envState = player.getPlayerStatefh1(false);
+//		envState.addAll(opponent.getPlayerStatefh1(false));
 		List<Integer> envState = player.getPlayerState();
 		envState.addAll(opponent.getPlayerState());
 
+//		logger.info("Feature Num: {}", envState.size());
 		// 威胁等级标识特征
 		int threatLevelHigh= 0;
 		int threatLevelMiddle = 0;
@@ -170,8 +188,10 @@ public class GameTreeBatchCEM extends Behaviour {
 		envState.add(threatLevelMiddle);
 
 		double score = 0;
-		for (int i = 0; i < parWeight.length; i++){
-			score += parWeight[i]*envState.get(i);
+		int startI = this.nowStage * this.feaNum;
+		for (int i = startI; i < (this.nowStage + 1)* this.feaNum; i++){
+//			logger.info("{} {} {} {}", i, this.feaNum, this.totalFea, envState.size());
+			score += parWeight[i]*envState.get(i - startI);
 		}
 		return score;
 	}
@@ -205,8 +225,8 @@ public class GameTreeBatchCEM extends Behaviour {
 	private void updateMeanVar(){
 		int k = 0;
 		int topNum = (int)(updateBatchSize*topRatio);
-		double[][] topPara = new double[feaNum][topNum];
-		double[] bestPara = new double[feaNum];
+		double[][] topPara = new double[totalFea][topNum];
+		double[] bestPara = new double[totalFea];
 		double meanTopReward = 0;
 		// 取出reward最好的若干次的参数
 		for(Integer reward: rewardMap.keySet()){
@@ -224,7 +244,7 @@ public class GameTreeBatchCEM extends Behaviour {
 					meanTopReward /= topNum;
 					logger.info("################# iterNum: {}, meanTopReward: {}, bestPara: {} ##################", iterNum, meanTopReward, bestPara);
 					// 更新均值和方差
-					for(int i=0; i<feaNum; i++){
+					for(int i=feaNum; i<totalFea; i++){
 						this.parMean[i] = calcMean(topPara[i]);
 						this.parVar[i] = calcVar(topPara[i]) + Math.max(0.1 - 0.01*iterNum, 0);  // 添加逐渐减小的Noise， 可调整
 					}
@@ -248,7 +268,7 @@ public class GameTreeBatchCEM extends Behaviour {
 
 		// 一个Batch结束
 		if(gameCount == batchSize){
-			logger.info("batchCount: {}, batchWinCnt: {}", batchCount, batchWinCnt);
+			logger.info("batchCount: {}, batchWinCnt: {} / {}", batchCount, batchWinCnt, batchSize);
 			int reward = batchWinCnt;
 			// 保存这一Batch的最终batchWinCnt和对应batchCount编号（从0开始编号）
 			if(rewardMap.containsKey(reward)){
