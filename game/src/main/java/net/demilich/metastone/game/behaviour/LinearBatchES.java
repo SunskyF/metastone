@@ -23,7 +23,7 @@ import java.util.List;
 
 public class LinearBatchES extends Behaviour {
 
-    public class SGD{
+    class SGD{
         INDArray v;
         double lr;
         double momentum;
@@ -40,13 +40,46 @@ public class LinearBatchES extends Behaviour {
         }
     }
 
+    class Adam{
+        double lr;
+        double beta1, beta2;
+        double eps;
+        INDArray m;
+        INDArray v;
+        int t = 0;
+        public Adam(INDArray params, double lr){
+            this.m = Nd4j.zeros(params.rows()).transpose();
+            this.v = Nd4j.zeros(params.rows()).transpose();
+            this.beta1 = 0.9;
+            this.beta2 = 0.999;
+            this.eps = 1e-8;
+            this.t = 0;
+            this.lr = lr;
+        }
+
+        public INDArray get_gradient(INDArray grad) {
+            t++;
+            logger.info("t: {}", t);
+            logger.info("2: {}, 1: {}, div: {}", Math.sqrt(1 - Math.pow(this.beta2, this.t)), 1 - Math.pow(this.beta1, this.t),
+                    Math.sqrt(1 - Math.pow(this.beta2, this.t)) / (1 - Math.pow(this.beta1, this.t)));
+            double a = this.lr * Math.sqrt(1 - Math.pow(this.beta2, this.t)) / (1 - Math.pow(this.beta1, this.t));
+            logger.info("a: {}, lr: {}", a, this.lr);
+            this.m = this.m.mul(this.beta1).add(grad.mul(1-this.beta1));
+            this.v = this.v.mul(this.beta2).add(grad.mul(grad).mul(1-this.beta2));
+            INDArray step = this.m.mul(-a).div(Transforms.sqrt(this.v).add(this.eps));
+            logger.info("m: {}", m.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
+            logger.info("v: {}", m.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
+            return step;
+        }
+    }
+
     private final static Logger logger = LoggerFactory.getLogger(LinearBatchES.class);
 
     private INDArray para; // parameters
     private static INDArray utility;
     private static int NKid = 10;
     private static double LR = 1; //0.001 0.01 0.1 1.0
-    double SIGMA = 0.5;
+    double SIGMA = 0.1;
     SGD optimizer;
     private List<int[]> shapes = new ArrayList<>();
     private static List<INDArray> p = new ArrayList<>();
@@ -54,7 +87,7 @@ public class LinearBatchES extends Behaviour {
     private static double[] kidRewards = new double[NKid * 2];
 
     // Game Para
-    int nFeature = 28;
+    int nFeature = 89;
     // Game Para End
 
     // Simulation count
@@ -81,14 +114,10 @@ public class LinearBatchES extends Behaviour {
         int base = NKid * 2;
         INDArray rank = Nd4j.arange(1, base+1);
         INDArray util_ = Transforms.max(Transforms.log(rank).sub(Math.log(base / 2.0 + 1)).neg(), 0);
-//        utility = util_.div(util_.sumNumber().doubleValue()).sub(1.0 / base);
-        this.utility = util_.div(util_.sumNumber().doubleValue());
+        utility = util_.div(util_.sumNumber().doubleValue()).sub(1.0 / base);
         this.optimizer = new SGD(this.para, LR, 0.9);
+//        this.optimizer = new Adam(this.para, LR);
         this.noise = Nd4j.randn(new int[]{NKid, this.para.rows()}).repeat(0, 2);
-//        logger.info("Origin Noise: {}", this.noise.getRow(batchCount).transpose().get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
-//        logger.info("Normal Noise: {}", this.noise.getRow(batchCount).transpose().mul(sign(batchCount)*this.SIGMA).get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
-//        logger.info("Origin Para: {}", this.para.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
-//        logger.info("Normal Para: {}", this.para.add(this.noise.getRow(batchCount).transpose().mul(sign(batchCount)*this.SIGMA)).get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
         this.p = paramReshape(this.para.add(this.noise.getRow(batchCount).transpose().mul(sign(batchCount)*this.SIGMA)));
     }
 
@@ -101,9 +130,18 @@ public class LinearBatchES extends Behaviour {
 
     INDArray buildNetwork(){
         INDArray p0 = linear(this.nFeature, 1);
-//        INDArray p1 = linear(30, 20);
-//        INDArray p2 = linear(20, 1);
+//        INDArray p0 = linear(this.nFeature, 30);
+//        INDArray p1 = linear(30, 1);
+//        return Nd4j.concat(0, p0, p1);
         return Nd4j.concat(0, p0);
+    }
+
+    double getValue(List<INDArray> p, INDArray x){
+        x = x.mmul(p.get(0)).add(p.get(1));
+//        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
+//        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
+//        x = x.mmul(p.get(2)).add(p.get(3));
+        return x.getDouble(0,0);
     }
 
     private GameContext simulateAction(GameContext simulation, Player player, GameAction action) {
@@ -120,24 +158,17 @@ public class LinearBatchES extends Behaviour {
         if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
             return Float.POSITIVE_INFINITY;
         }
-        List<Integer> envState = player.getPlayerStatefh0(false);
-        envState.addAll(opponent.getPlayerStatefh0(true));
+        List<Integer> envState = player.getPlayerState();
+        envState.addAll(opponent.getPlayerState());
+        envState.add(context.getTurn());
+
         double[] tmp = new double[this.nFeature];
         for (int i=0;i<envState.size();++i){
             tmp[i] = envState.get(i);
         }
         INDArray featureIND = Nd4j.create(tmp);
-//        logger.info("{}", featureIND);
+//        logger.info("Feature: {}", featureIND);
         return getValue(this.p, featureIND);
-    }
-
-    double getValue(List<INDArray> p, INDArray x){
-        x = x.mmul(p.get(0)).add(p.get(1));
-//        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
-//        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
-//        x = x.mmul(p.get(4)).add(p.get(5));
-//        logger.info("value: {}", x);
-        return x.getDouble(0,0);
     }
 
     List<INDArray> paramReshape(INDArray param){
@@ -152,14 +183,6 @@ public class LinearBatchES extends Behaviour {
             start += nW + nb;
         }
         return params;
-    }
-
-    public static <T extends Number> int[] asArray(final T... a) {
-        int[] b = new int[a.length];
-        for (int i = 0; i < b.length; i++) {
-            b[i] = a[i].intValue();
-        }
-        return b;
     }
 
     @Override
@@ -205,7 +228,6 @@ public class LinearBatchES extends Behaviour {
         if(playerId == winningPlayerId){
             batchWinCnt += 1;
         }
-//        logger.info("Player: {}, Winner: {}", playerId, winningPlayerId);
 
         if (gameCount == batchSize){ // 第一层，计算一个batch的胜率作为Reward
             kidRewards[batchCount] = batchWinCnt;
@@ -225,15 +247,14 @@ public class LinearBatchES extends Behaviour {
 
             Integer[] kidRank = argsort(kidRewards, false);
             INDArray cumu = Nd4j.zeros(this.para.shape());
-            double flag = 0;
             for (int i=0;i<kidRank.length;++i){
                 int kId = kidRank[i];
-                if (i < 5){
-                    flag = 1;
-                }else
-                    flag = 0;
-//                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId) * utility.getDouble(0, i)));
-                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId) * flag));
+                // CEM方法
+//                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId) * kidRewards[kidRank[i]])); // 原论文中
+//                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId) * utility.getDouble(0, i))); // 莫凡
+                if (i > 4)
+                    break;
+                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId)));
             }
             logger.info("Rewards: {}", rewards);
             logger.info("Best Para: {}", this.para.add(noise.getRow(kidRank[0]).transpose().mul(sign(batchCount)*this.SIGMA))
@@ -242,23 +263,28 @@ public class LinearBatchES extends Behaviour {
             if (kidRewards[kidRank[0]] > totalBestReward){
                 try{
                     totalBestReward = kidRewards[kidRank[0]];
-                    logger.info("Saving... {}", totalBestReward);
-                    File saveFile = new File("NdPara_3layerNetwork.data");
-                    Nd4j.saveBinary(this.para.add(noise.getRow(kidRank[0]).transpose()), saveFile);
+                    String fileName = "NdModel/network/NdPara_CEM_89fea.data";
+                    logger.info("Saving... {} {}", totalBestReward, fileName);
+                    File saveFile = new File(fileName);
+                    Nd4j.saveBinary(this.para.add(noise.getRow(kidRank[0]).transpose().mul(sign(batchCount)*this.SIGMA)), saveFile);
                 }
                 catch (IOException e){
                     e.printStackTrace();
                 }
             }
-//            logger.info("Cumu: {}", cumu.div(2 * NKid * SIGMA));
-            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid * SIGMA));
+            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid));
+//            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid * SIGMA));
             this.para.addi(grad);
             logger.info("Grad: {}", grad.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
             logger.info("Para: {}", this.para.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
+            logger.info("LR: {}", LR);
             noise = Nd4j.randn(new int[]{NKid, this.para.rows()}).repeat(0, 2);
             batchCount = 0;
             this.p = paramReshape(this.para.add(this.noise.getRow(batchCount).transpose().mul(sign(batchCount)*this.SIGMA)));
             epoch++;
+            if (epoch % 10 == 0){
+                LR /= 2;
+            }
         }
     }
 

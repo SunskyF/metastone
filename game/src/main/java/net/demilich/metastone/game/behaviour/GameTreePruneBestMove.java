@@ -309,8 +309,10 @@ public class GameTreePruneBestMove extends Behaviour {
 		Player player = simulation.getPlayer(playerId);
 		Player opponent = simulation.getOpponent(player);
 
-		List<Integer> envState = player.getPlayerStatefh1(false);
-		envState.addAll(opponent.getPlayerStatefh1(false));
+//		List<Integer> envState = player.getPlayerStatefh1(false);
+//		envState.addAll(opponent.getPlayerStatefh1(false));
+		List<Integer> envState = player.getPlayerState();
+		envState.addAll(opponent.getPlayerState());
 
 		// 威胁等级标识特征
 		int threatLevelHigh= 0;
@@ -324,10 +326,10 @@ public class GameTreePruneBestMove extends Behaviour {
 		envState.add(threatLevelHigh);
 		envState.add(threatLevelMiddle);
 
-		if (store.containsKey(envState)){
-//			logger.info("Exist Hash: {}", envState.hashCode());
-			return store.get(envState); // 多线程模拟会报错
-		}
+//		if (store.containsKey(envState)){
+////			logger.info("Exist Hash: {}", envState.hashCode());
+//			return store.get(envState); // 多线程模拟会报错
+//		}
 
 		SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
 		for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
@@ -348,7 +350,7 @@ public class GameTreePruneBestMove extends Behaviour {
 				break;
 			}
 		}
-		store.put(envState, score);
+//		store.put(envState, score);
 
 		return score;
 	}

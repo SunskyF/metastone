@@ -10,6 +10,7 @@ import net.demilich.metastone.game.behaviour.features.Feature_basic;
 import net.demilich.metastone.game.cards.CardType;
 import net.demilich.metastone.game.entities.heroes.HeroClass;
 import net.demilich.metastone.game.entities.minions.Minion;
+import org.dmg.pmml.True;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -483,14 +484,14 @@ public class GameContext implements Cloneable, IDisposable {
 			2. feature_fh_0
 		 */
 		String fea_name = "feature_fh_0";
-		Feature_basic fea = new Feature_basic(hashCode(), fea_name);
+//		Feature_basic fea = new Feature_basic(hashCode(), fea_name);
 
 		while (!gameDecided()) {  // 如果游戏胜负未分，开始切换后的activePlayer的turn
 			startTurn(activePlayer);  // 开始当前activePlayer的Turn
 			while (playTurn()) {}    // 循环play，直到执行END_TURN action，结束当前player的当前turn （主要是调用behaviour的requestAction）
 			// add by sjx, 获取每一回合结束时的环境信息
 
-			fea.append(players, activePlayer);
+//			fea.append(players, activePlayer);
 			winner_id = getWinningPlayerId();
 			if (getTurn() > GameLogic.TURN_LIMIT) {
 				break;
@@ -498,17 +499,17 @@ public class GameContext implements Cloneable, IDisposable {
 		}
 
 //		logger.info(players[0].getDeckName());
-		int num_sim = 50;
-		fea.end(winner_id);
-		String player_class_0 = "Warrior" + "_" + players[0].getDeckName();
-		//players[1].getHero().getHeroPower().getHeroClass().toString()好像会报错
-		String player_class_1 = "Warrior" + "_" + players[1].getDeckName();
-		int fea_num = fea.feature_number();
 
-		String filename = player_class_0 + "Vs" + player_class_1 +
-				"_" + players[0].getBehaviour().getName() + "Vs" +
-				players[1].getBehaviour().getName() + "_" +
-				fea_name + "_" + fea_num + "_" + num_sim + ".log";
+//		int num_sim = 50;
+//		fea.end(winner_id);
+//		String player_class_0 = "Warrior" + "_" + players[0].getDeckName();
+//		String player_class_1 = "Warrior" + "_" + players[1].getDeckName();
+//		int fea_num = fea.feature_number();
+//
+//		String filename = player_class_0 + "Vs" + player_class_1 +
+//				"_" + players[0].getBehaviour().getName() + "Vs" +
+//				players[1].getBehaviour().getName() + "_" +
+//				fea_name + "_" + fea_num + "_" + num_sim + ".log";
 
 //		fea.appendWrite(filename);
 		endGame();
@@ -643,6 +644,22 @@ public class GameContext implements Cloneable, IDisposable {
 		onGameStateChanged();
 		actionsThisTurn = 0;
 		turnState = TurnState.TURN_IN_PROGRESS;
+	}
+
+	public void startTurn(int playerId, boolean stable){ // 稳定抽牌
+		if (stable){
+			turn++;
+			logic.startTurn(playerId, stable);
+			onGameStateChanged();
+			actionsThisTurn = 0;
+			turnState = TurnState.TURN_IN_PROGRESS;
+		}else{
+			turn++;
+			logic.startTurn(playerId);
+			onGameStateChanged();
+			actionsThisTurn = 0;
+			turnState = TurnState.TURN_IN_PROGRESS;
+		}
 	}
 
 	public String feature_0(){//86 feature total, 43 each

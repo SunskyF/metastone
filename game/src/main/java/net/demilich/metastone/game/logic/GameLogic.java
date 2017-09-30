@@ -675,6 +675,24 @@ public class GameLogic implements Cloneable {
 		return drawCard(playerId, card, source);
 	}
 
+	public Card drawCard(int playerId, Entity source, boolean stable) {
+		Player player = context.getPlayer(playerId);
+		CardCollection deck = player.getDeck();
+		if (deck.isEmpty()) {
+			Hero hero = player.getHero();
+			int fatigue = player.hasAttribute(Attribute.FATIGUE) ? player.getAttributeValue(Attribute.FATIGUE) : 0;
+			fatigue++;
+			player.setAttribute(Attribute.FATIGUE, fatigue);
+			damage(player, hero, fatigue, hero);
+			log("{}'s deck is empty, taking {} fatigue damage!", player.getName(), fatigue);
+			player.getStatistics().fatigueDamage(fatigue);
+			return null;
+		}
+
+		Card card = deck.get(0);
+		return drawCard(playerId, card, source);
+	}
+
 	public Card drawCard(int playerId, Card card, Entity source) {
 		Player player = context.getPlayer(playerId);
 		player.getStatistics().cardDrawn();
@@ -1838,6 +1856,39 @@ public class GameLogic implements Cloneable {
 		}
 		context.fireGameEvent(new TurnStartEvent(context, player.getId()));
 		drawCard(playerId, null);
+		checkForDeadEntities();
+	}
+
+	public void startTurn(int playerId, boolean stable) {
+		Player player = context.getPlayer(playerId);
+		if (player.getMaxMana() < MAX_MANA) {
+			player.setMaxMana(player.getMaxMana() + 1);
+		}
+		player.getStatistics().startTurn();
+
+		player.setLockedMana(player.getAttributeValue(Attribute.OVERLOAD));
+		int mana = Math.min(player.getMaxMana() - player.getLockedMana(), MAX_MANA);
+		player.setMana(mana);
+		String manaString = player.getMana() + "/" + player.getMaxMana();
+		if (player.getLockedMana() > 0) {
+			manaString += " (" + player.getLockedMana() + " locked by overload)";
+		}
+		log("{} starts his turn with {} mana", player.getName(), manaString);
+
+		player.removeAttribute(Attribute.OVERLOAD);
+		for (Summon summon : player.getSummons()) {
+			summon.removeAttribute(Attribute.TEMPORARY_ATTACK_BONUS);
+		}
+
+		player.getHero().getHeroPower().setUsed(0);
+		player.getHero().activateWeapon(true);
+		refreshAttacksPerRound(player.getHero());
+		for (Summon summon : player.getSummons()) {
+			summon.removeAttribute(Attribute.SUMMONING_SICKNESS);
+			refreshAttacksPerRound(summon);
+		}
+		context.fireGameEvent(new TurnStartEvent(context, player.getId()));
+		drawCard(playerId, null, stable);
 		checkForDeadEntities();
 	}
 

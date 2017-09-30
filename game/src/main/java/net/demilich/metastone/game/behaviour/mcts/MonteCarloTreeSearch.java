@@ -61,13 +61,14 @@ public class MonteCarloTreeSearch extends Behaviour {
 		Node root = new Node(context, player.getId(), null, new SupervisedLinearHeuristic(), storeNode, storeValue, null);
 		Node.resetSimCount();
 
-		for (int i = 0; i < ITERATIONS; i++) {
+		for (int i = 0; i < ITERATIONS; i++) { // 从根节点开始多少次
 			//logger.info("Iter: {}", i);
 			root.setSimCnt(i);
-			Node node = root.treePolicy();
+			Node node = root.treePolicy(); // Tree Policy
 			int reward = node.defaultPolicy();
 			node.backup(reward);
 		}
+		// 打印节点信息
 //		for(GameAction act: root.nextNodes.keySet()){
 //			if (root.nextNodes.get(act) != null){
 //				logger.info("Action: {}, score: {}, visit: {}", act, root.nextNodes.get(act).totalReward, root.nextNodes.get(act).visitsCount);

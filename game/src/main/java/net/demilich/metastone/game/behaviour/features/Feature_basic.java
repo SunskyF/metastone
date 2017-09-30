@@ -61,10 +61,10 @@ public class Feature_basic {
             envState.addAll(players[1-activePlayer].getPlayerStateBasic());
         }
         else if (this.fea_name.equals("feature_fh_0")){
-            envState.add(activePlayer);
-            envState.addAll(players[activePlayer].getPlayerStatefh0(false));
-            featureSingleLen = envState.size();
-            envState.addAll(players[1-activePlayer].getPlayerStatefh0(true));
+//            envState.add(activePlayer);
+//            envState.addAll(players[activePlayer].getPlayerStatefh0(false));
+//            featureSingleLen = envState.size();
+//            envState.addAll(players[1-activePlayer].getPlayerStatefh0(true));
         }
         else if (this.fea_name.equals("feature_fh_1")){
             envState.add(activePlayer);

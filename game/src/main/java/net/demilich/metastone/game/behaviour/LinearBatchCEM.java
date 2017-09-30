@@ -22,7 +22,7 @@ public class LinearBatchCEM extends Behaviour {
 
 	private final static Logger logger = LoggerFactory.getLogger(LinearBatchCEM.class);
 	private Random random = new Random();
-	private final static int stage = 2;
+	private final static int stage = 1;
 	private final static int feaSignle = 28;
 	private final static int feaNum = stage * feaSignle;
 	private static double[] parMean = new double[feaNum];
@@ -61,7 +61,7 @@ public class LinearBatchCEM extends Behaviour {
 
 	public LinearBatchCEM() {
 		for(int i=0; i<feaNum; i++){
-			parMean[i] = coef0[i]; //2*random.nextDouble() - 1;
+			parMean[i] = 2*random.nextDouble() - 1;
 			parVar[i] = 0.25;
 		}
 		updateParWeight();
@@ -91,10 +91,6 @@ public class LinearBatchCEM extends Behaviour {
 		}
 
 		// get best action at the current state and the corresponding Q-score
-		if (context.getTurn() < 10)
-			nowTurn = 0;
-		else
-			nowTurn = 1;
 
 		GameAction bestAction = validActions.get(0);
 		double bestScore = Double.NEGATIVE_INFINITY;
@@ -164,8 +160,10 @@ public class LinearBatchCEM extends Behaviour {
 		if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
 			return Float.POSITIVE_INFINITY;
 		}
-		List<Integer> envState = player.getPlayerStatefh0(false);
+		List<Double> envState = player.getPlayerStatefh0(false);
 		envState.addAll(opponent.getPlayerStatefh0(true));
+//		List<Integer> envState = player.getPlayerState();
+//		envState.addAll(opponent.getPlayerState());
 		// 威胁等级标识特征
 //		int threatLevelHigh= 0;
 //		int threatLevelMiddle = 0;
@@ -180,8 +178,8 @@ public class LinearBatchCEM extends Behaviour {
 //		logger.info("Feature Number: {}", envState.size());
 //		logger.info("{} {} {} {}", feaSignle, feaNum, envState.size(), parWeight.length);
 		double score = 0;
-		for (int i = nowTurn * feaSignle; i < (nowTurn + 1) * feaSignle; i++){
-			score += parWeight[i]*envState.get(i - nowTurn * feaSignle);
+		for (int i = 0; i < feaSignle; i++){
+			score += parWeight[i]*envState.get(i);
 		}
 		return score;
 	}

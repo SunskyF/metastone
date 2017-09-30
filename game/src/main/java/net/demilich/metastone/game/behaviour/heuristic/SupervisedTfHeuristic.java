@@ -40,8 +40,8 @@ public class SupervisedTfHeuristic implements IGameStateHeuristic{
             j++;
         }
 
-        try (Tensor input = Tensor.create(matrix);
-             Tensor result = this.tf_model.s.runner().feed("INPUT/input", input).fetch("OUTPUT/output").run().get(0)) {
+        try (Tensor input = Tensor.create(matrix); // 将数组转化为tensor，使其可以作为输入
+             Tensor result = this.tf_model.s.runner().feed("INPUT/input", input).fetch("OUTPUT/output").run().get(0)) { //将其输入前向网络，得到输出结果
 
             score = result.copyTo(new float[1][1])[0][0];
             

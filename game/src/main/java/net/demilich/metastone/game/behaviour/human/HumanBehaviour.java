@@ -111,6 +111,8 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 			} catch (InterruptedException e) {
 			}
 		}
+//		logger.info("Valid: {}", validActions);
+//		logger.info("SelectedAction: {}", selectedAction);
 		return selectedAction;
 	}
 

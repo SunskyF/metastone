@@ -27,17 +27,21 @@ public class LinearNdTest extends Behaviour{
     int nFeature = 28;
     // Game Para End
 
+    String paraFile = "NdModel/network/NdPara_CEM_28fea.data";
+
     public LinearNdTest(){
         this.para = buildNetwork();
         try{
-            logger.info("Loading...");
-            File readFile = new File("NdPara_3layerNetwork.data");
+            logger.info("Loading... {}", paraFile);
+            File readFile = new File(paraFile);
             this.para = Nd4j.readBinary(readFile);
+//            logger.info("Para: {}", this.para.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
+            logger.info("Loaded...");
         }
         catch (IOException e){
             e.printStackTrace();
         }
-        logger.info("Shape: {}", this.para.shape());
+//        logger.info("Shape: {}", this.para.shape());
         this.p = paramReshape(this.para);
     }
 
@@ -71,8 +75,11 @@ public class LinearNdTest extends Behaviour{
         if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
             return Float.POSITIVE_INFINITY;
         }
-        List<Integer> envState = player.getPlayerStatefh0(false);
+        List<Double> envState = player.getPlayerStatefh0(false);
         envState.addAll(opponent.getPlayerStatefh0(true));
+//        List<Integer> envState = player.getPlayerState();
+//        envState.addAll(opponent.getPlayerState());
+
         double[] tmp = new double[this.nFeature];
         for (int i=0;i<envState.size();++i){
             tmp[i] = envState.get(i);
@@ -89,10 +96,19 @@ public class LinearNdTest extends Behaviour{
     }
 
     INDArray buildNetwork(){
-        INDArray p0 = linear(this.nFeature, 1);
-//        INDArray p1 = linear(30, 20);
-//        INDArray p2 = linear(20, 1);
-        return Nd4j.concat(0, p0);
+//        INDArray p0 = linear(this.nFeature, 1);
+        INDArray p0 = linear(this.nFeature, 30);
+        INDArray p1 = linear(30, 1);
+        return Nd4j.concat(0, p0, p1);
+//        return Nd4j.concat(0, p0);
+    }
+
+    double getValue(List<INDArray> p, INDArray x){
+//        x = x.mmul(p.get(0)).add(p.get(1));
+        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
+//        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
+        x = x.mmul(p.get(2)).add(p.get(3));
+        return x.getDouble(0,0);
     }
 
     List<INDArray> paramReshape(INDArray param){
@@ -107,15 +123,6 @@ public class LinearNdTest extends Behaviour{
             start += nW + nb;
         }
         return params;
-    }
-
-    double getValue(List<INDArray> p, INDArray x){
-        x = x.mmul(p.get(0)).add(p.get(1));
-//        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
-//        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
-//        x = x.mmul(p.get(4)).add(p.get(5));
-//        logger.info("value: {}", x);
-        return x.getDouble(0,0);
     }
 
     @Override

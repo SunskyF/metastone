@@ -65,31 +65,31 @@ class Node {
 
 	private Node expand() {
 		double bestScore = Integer.MIN_VALUE;
-		GameAction action = null;
-		for (GameAction tmp: nextNodes.keySet()){
-			action = tmp;
-			break;
-		}
-
-		for (GameAction act: nextNodes.keySet()){//选择一个没有expand过的节点
-			if (nextNodes.get(act) == null){
-				GameContext simulationResult = simulateAction(state.clone(), state.getActivePlayerId(), act);  //假设执行gameAction，得到之后的game context
-				double gameStateScore = evaluateContext(simulationResult, state.getActivePlayerId());	//heuristic.getScore(simulationResult, player.getId());     //heuristic评估执行gameAction之后的游戏局面的分数
-				if(gameStateScore > bestScore){
-					action = act;
-				}
-				simulationResult.dispose();  //GameContext环境每次仿真完销毁
-			}
-		}
-
-
-//		List<GameAction> alterList = new ArrayList<>();
+//		GameAction action = null;
+//		for (GameAction tmp: nextNodes.keySet()){
+//			action = tmp;
+//			break;
+//		}
+//		(2) Move Ordering
 //		for (GameAction act: nextNodes.keySet()){//选择一个没有expand过的节点
 //			if (nextNodes.get(act) == null){
-//				alterList.add(act);
+//				GameContext simulationResult = simulateAction(state.clone(), state.getActivePlayerId(), act);  //假设执行gameAction，得到之后的game context
+//				double gameStateScore = evaluateContext(simulationResult, state.getActivePlayerId());	//heuristic.getScore(simulationResult, player.getId());     //heuristic评估执行gameAction之后的游戏局面的分数
+//				if(gameStateScore > bestScore){
+//					action = act;
+//				}
+//				simulationResult.dispose();  //GameContext环境每次仿真完销毁
 //			}
 //		}
-//		GameAction action = alterList.get(random.nextInt(alterList.size()));
+
+
+		List<GameAction> alterList = new ArrayList<>();
+		for (GameAction act: nextNodes.keySet()){//选择一个没有expand过的节点
+			if (nextNodes.get(act) == null){
+				alterList.add(act);
+			}
+		}
+		GameAction action = alterList.get(random.nextInt(alterList.size()));
 
 
 		//logger.info("Player: {}, Choosed Action: {}", getState().getActivePlayerId(), action.toString());
@@ -127,32 +127,25 @@ class Node {
 			player.setBehaviour(new PlayRandomBehaviour());
 		}
 		//logger.info("Default Policy Winner: {}", simulation.getWinningPlayerId());
-//		simulation.playFromState();
-		simulation.playFromState(getState().getTurn() + 10);
+		simulation.playFromState();
+//		simulation.playFromState(getState().getTurn() + 10); // (4) Early Cutoff
 //		return simulation.getPlayer(getPlayer()).getHero().getHp() > simulation.getPlayer(1-getPlayer()).getHero().getHp() ? 1:0;
 //		logger.info("Default Policy Winner: {}", simulation.getWinningPlayerId());
 		//logger.info("Got Reward: {}", simulation.getWinningPlayerId() == getPlayer() ? 1 : -1);
-//		return simulation.getWinningPlayerId() == getPlayer() ? 1 : 0;
+		return simulation.getWinningPlayerId() == getPlayer() ? 1 : 0;
 //		logger.info("Score: {}, {}", this.heuristic.getScore(simulation, getPlayer()), this.heuristic.getScore(simulation, 1-getPlayer()));
-		return this.heuristic.getScore(simulation, getPlayer()) > this.heuristic.getScore(simulation, 1-getPlayer()) ? 1 : 0;
+//		return this.heuristic.getScore(simulation, getPlayer()) > this.heuristic.getScore(simulation, 1-getPlayer()) ? 1 : 0;
 	}
 
 	void backup(int reward){
 		Node node = this;
 		//logger.info("Player: {}, Active: {}", node.getPlayer(), getState().getActivePlayerId());
-		if (node.getPlayer() == getState().getActivePlayerId()){
-//			reward = -reward;
-		}
-		int prePlayer = getState().getActivePlayerId();
+
 		while(node != null){
 			node.visitsCount += 1;
 //			logger.info("Reward: {}", reward);
 			node.totalReward += reward;
 			node = node.parent;
-			if (node != null && node.getState().getActivePlayerId() != prePlayer){
-//				reward = -reward;
-				prePlayer = node.getState().getActivePlayerId();
-			}
 		}
 	}
 
@@ -215,8 +208,9 @@ class Node {
 					c * Math.sqrt(Math.log(visitsCount) / child.visitsCount);
 			double heuristic = evaluateContext(child.getState(), getState().getActivePlayerId());
 //			logger.info("UCB: {}, Heuristic: {}", UCB, heuristic);
-			double Q = UCB * (simCnt / 10) + heuristic / 500;
-//			double Q = UCB;
+			// (1) Tree Policy Bias
+//			double Q = UCB * (simCnt / 10) + heuristic / 500;
+			double Q = UCB;
 //			logger.info("Sim Count: {}", simulationCount);
 //			logger.info("UCB: {}, Heuristic: {}, Q: {}", UCB, heuristic, Q);
 			if (Q > maxQ){
@@ -232,9 +226,9 @@ class Node {
 
 	Node treePolicy() {
 		Node current = this;
-		int depth = 6;
+		int depth = 2;
 		while (!current.isTerminal()) {
-			if (current.comingAct != null && current.comingAct.getActionType() == ActionType.END_TURN)
+			if (current.comingAct != null && current.comingAct.getActionType() == ActionType.END_TURN) // 会导致不跨轮
 				return current;
 
 			if (!current.isFullyExpanded()) {
@@ -242,10 +236,9 @@ class Node {
 			} else {
 				current = current.bestChild(0.5);
 				depth--;
-//				if (depth == 0 || current.getState().getActivePlayerId() != getPlayer()){
-				if (depth == 0){
-					break;
-				}
+//				if (depth == 0 || current.getState().getActivePlayerId() != getPlayer()){ // 限制深度
+//					break;
+//				}
 			}
 		}
 		return current;

@@ -1,7 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'application'
 apply from: 'http://dl.bintray.com/content/shemnon/javafx-gradle/8.1.1/javafx.plugin'
-// apply from: 'javafx.plugin' 直接使用
+//apply from: 'javafx.plugin' // 直接使用
 
 mainClassName = 'net.demilich.metastone.MetaStone'
 

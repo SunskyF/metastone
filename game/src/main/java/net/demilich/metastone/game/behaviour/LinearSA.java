@@ -91,7 +91,7 @@ public class LinearSA extends Behaviour{
         if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
             return Float.POSITIVE_INFINITY;
         }
-        List<Integer> envState = player.getPlayerStatefh0(false);
+        List<Double> envState = player.getPlayerStatefh0(false);
         envState.addAll(opponent.getPlayerStatefh0(false));
 
         double score = 0;
