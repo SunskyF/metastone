@@ -129,19 +129,25 @@ public class LinearBatchES extends Behaviour {
     }
 
     INDArray buildNetwork(){
+        // 线性模型
         INDArray p0 = linear(this.nFeature, 1);
+        return Nd4j.concat(0, p0);
+        // 线性模型 End
+        // 网络模型
 //        INDArray p0 = linear(this.nFeature, 30);
 //        INDArray p1 = linear(30, 1);
 //        return Nd4j.concat(0, p0, p1);
-        return Nd4j.concat(0, p0);
     }
 
     double getValue(List<INDArray> p, INDArray x){
+        // 线性模型
         x = x.mmul(p.get(0)).add(p.get(1));
+        return x.getDouble(0,0);
+        // 网络模型
 //        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
 //        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
 //        x = x.mmul(p.get(2)).add(p.get(3));
-        return x.getDouble(0,0);
+//        return x.getDouble(0,0);
     }
 
     private GameContext simulateAction(GameContext simulation, Player player, GameAction action) {
@@ -194,7 +200,7 @@ public class LinearBatchES extends Behaviour {
     public List<Card> mulligan(GameContext context, Player player, List<Card> cards) {
         List<Card> discardedCards = new ArrayList<Card>();
         for (Card card : cards) {
-            if (card.getBaseManaCost() >= 4 || card.getCardId()=="minion_patches_the_pirate") {  //耗法值>=4的不要, Patches the Pirate这张牌等他被触发召唤
+            if (card.getBaseManaCost() >= 4 || card.getCardId().equals("minion_patches_the_pirate")) {  //耗法值>=4的不要, Patches the Pirate这张牌等他被触发召唤
                 discardedCards.add(card);
             }
         }
@@ -261,7 +267,7 @@ public class LinearBatchES extends Behaviour {
                     .get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));
 
             if (kidRewards[kidRank[0]] > totalBestReward){
-                try{
+                try{ // 保存模型
                     totalBestReward = kidRewards[kidRank[0]];
                     String fileName = "NdModel/network/NdPara_CEM_89fea.data";
                     logger.info("Saving... {} {}", totalBestReward, fileName);
@@ -272,7 +278,7 @@ public class LinearBatchES extends Behaviour {
                     e.printStackTrace();
                 }
             }
-            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid));
+            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid)); // 将sigma去除，使得只影响一个地方
 //            INDArray grad = optimizer.get_gradient(cumu.div(2 * NKid * SIGMA));
             this.para.addi(grad);
             logger.info("Grad: {}", grad.get(NDArrayIndex.interval(0, 10), NDArrayIndex.all()));

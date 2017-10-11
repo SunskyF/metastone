@@ -35,6 +35,11 @@ public class GameTreeBestMoveND extends Behaviour{
 
     String paraFile = "NdModel/linear/96feaGameTree_mean_para_ES.data";
 
+    // Simulation Count
+    private static int evaluateCnt = 0;
+    private static int requestCnt = 0;
+    private int localEvaluateCnt = 0;
+    // Sim Count End
     public GameTreeBestMoveND(){
         this.para = buildNetwork(); // 这步是必须的，需要用来获得网络的shape
 //        logger.info("shape: {}", this.para.shape());
@@ -61,12 +66,17 @@ public class GameTreeBestMoveND extends Behaviour{
     }
 
     INDArray buildNetwork(){
+        // 更换模型时需要同时修改buildNetwork和getValue
+        // 线性模型
         INDArray p0 = linear(this.nFeature, 1);
+        return Nd4j.concat(0, p0);
+        // 线性模型 End
+        // 网络模型
 //        INDArray p0 = linear(this.nFeature, 30);
 //        INDArray p1 = linear(30, 20);
 //        INDArray p2 = linear(20, 1);
 //        return Nd4j.concat(0, p0, p1, p2);
-        return Nd4j.concat(0, p0);
+        // 网络模型 End
     }
 
     List<INDArray> paramReshape(INDArray param){
@@ -99,10 +109,8 @@ public class GameTreeBestMoveND extends Behaviour{
         return discardedCards;
     }
 
-    private static int calculateThreatLevel(GameContext context, int playerId) {
+    private static int calculateThreatLevel(Player player, Player opponent) {
         int damageOnBoard = 0;
-        Player player = context.getPlayer(playerId);
-        Player opponent = context.getOpponent(player);
         for (Minion minion : opponent.getMinions()) {
             damageOnBoard += minion.getAttack(); // * minion.getAttributeValue(Attribute.NUMBER_OF_ATTACKS); (暂时没有考虑风怒、冻结等的影响)
         }
@@ -135,22 +143,21 @@ public class GameTreeBestMoveND extends Behaviour{
     }
 
     double getValue(List<INDArray> p, INDArray x){
+        // 线性模型
         x = x.mmul(p.get(0)).add(p.get(1));
+        return x.getDouble(0,0);
+        // 线性模型 End
+        // 网络模型
 //        x = Transforms.tanh(x.mmul(p.get(0)).add(p.get(1)));
 //        x = Transforms.tanh(x.mmul(p.get(2)).add(p.get(3)));
 //        x = x.mmul(p.get(4)).add(p.get(5));
-        return x.getDouble(0,0);
+//        return x.getDouble(0,0);
+        // 网络模型 End
+
     }
 
-    private double evaluateContext(GameContext context, int playerId) {
-        Player player = context.getPlayer(playerId);
-        Player opponent = context.getOpponent(player);
-        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
-            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
-        }
-        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
-            return Float.POSITIVE_INFINITY;
-        }
+    private List<Double> getFeature(Player player, Player opponent, double turn){
+
         List<Double> playerFeature = player.getPlayerStateDouble();
         List<Double> opponentFeature  = opponent.getPlayerStateDouble();
         List<Double> envState = new ArrayList<>();
@@ -160,7 +167,7 @@ public class GameTreeBestMoveND extends Behaviour{
         // 威胁等级标识特征
         int threatLevelHigh= 0;
         int threatLevelMiddle = 0;
-        int threatLevel = calculateThreatLevel(context, playerId);
+        int threatLevel = calculateThreatLevel(player, opponent);
         if(threatLevel == 2){
             threatLevelHigh = 1;
         }else if(threatLevel == 1){
@@ -168,23 +175,35 @@ public class GameTreeBestMoveND extends Behaviour{
         }
         envState.add(threatLevelHigh / 1.0);
         envState.add(threatLevelMiddle / 1.0);
-        envState.add(context.getTurn() / 1.0);
+        envState.add(turn);
 
         envState.add((playerFeature.get(0) + 1.0) / (opponentFeature.get(0) + 1.0)); // HP 比值
         envState.add((playerFeature.get(35) + playerFeature.get(38) + playerFeature.get(40) + 1.0) /
                 (opponentFeature.get(35) + opponentFeature.get(38) + opponentFeature.get(40) + 1.0)); // 手牌数目 比值
         envState.add((playerFeature.get(6) + playerFeature.get(9) + 1.0) / (opponentFeature.get(6) + opponentFeature.get(9) + 1.0)); // 场上随从数目 比值
         envState.add((playerFeature.get(7) + 1.0) / (opponentFeature.get(7) + 1.0)); // 场上可攻击随从攻击力 比值
-        envState.add((playerFeature.get(8) + 1.0) / (opponentFeature.get(8) + 1.0)); // 场上随从血量 比值
-        envState.add((playerFeature.get(10) + 1.0) / (opponentFeature.get(10) + 1.0)); // 场上随从血量 比值
-        envState.add((playerFeature.get(11) + 1.0) / (opponentFeature.get(11) + 1.0)); // 场上随从血量 比值
+        envState.add((playerFeature.get(8) + 1.0) / (opponentFeature.get(8) + 1.0)); // 场上可攻击随从血量 比值
+        envState.add((playerFeature.get(10) + 1.0) / (opponentFeature.get(10) + 1.0)); // 场上不可攻击随从攻击力 比值
+        envState.add((playerFeature.get(11) + 1.0) / (opponentFeature.get(11) + 1.0)); // 场上不可攻击随从血量 比值
         // 96
-//        envState.add(opponentFeature.get(0) + opponentFeature.get(1) - playerFeature.get(7)); // 对方hp + 护甲 - 我方可攻击随从的攻击力之和
-//        envState.add(playerFeature.get(0) + opponentFeature.get(1) - opponentFeature.get(7) + opponentFeature.get(10) - 3);
-        // 98
+        return envState;
+    }
 
+    private double evaluateContext(GameContext context, int playerId) {
+        evaluateCnt++;
+        localEvaluateCnt++;
+        Player player = context.getPlayer(playerId);
+        Player opponent = context.getOpponent(player);
+        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
+            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
+        }
+        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
+            return Float.POSITIVE_INFINITY;
+        }
+
+        List<Double> envState = getFeature(player, opponent, context.getTurn());
         double[] tmp = new double[this.nFeature];
-        for (int i=0;i<envState.size();++i){
+        for (int i=0;i<envState.size();++i){ // 使得特征能转为nd4j的形式
             tmp[i] = envState.get(i);
         }
 
@@ -194,12 +213,16 @@ public class GameTreeBestMoveND extends Behaviour{
 
     @Override
     public GameAction requestAction(GameContext context, Player player, List<GameAction> validActions) {
+        requestCnt++;
+        localEvaluateCnt = 0;
+        if (requestCnt % 100 == 0)
+            logger.info("requestCnt: {}, evaluateCnt: {}", requestCnt, evaluateCnt);
 
         if (validActions.size() == 1) {  //只剩一个action一般是 END_TURN
             return validActions.get(0);
         }
 
-        int depth = 6;
+        int depth = 2;
         // when evaluating battlecry and discover actions, only optimize the immediate value （两种特殊的action）
         if (validActions.get(0).getActionType() == ActionType.BATTLECRY) {
             depth = 0;
@@ -207,11 +230,23 @@ public class GameTreeBestMoveND extends Behaviour{
             return validActions.get(0);
         }
 
-        store.clear();//每次都是只对一次搜索
+        store.clear();//每次都是只对一次搜索，清空哈希表
         GameAction bestAction = validActions.get(0);
         double bestScore = Double.NEGATIVE_INFINITY;
 
-//        phase = 1; // 分阶段，区分出牌和平A
+        // 当修改剪枝操作版本时，记得修改alphabeta函数中的剪枝操作
+        // 基础版本
+        for (GameAction gameAction: validActions){ //基础的方法
+            double score = alphaBeta(context, player.getId(), gameAction, depth);
+            if (score > bestScore){
+                bestAction = gameAction;
+                bestScore = score;
+            }
+        }
+        // 基础版本 End
+
+        // 分阶段，区分出牌和平A
+//        phase = 1;
 //        for (GameAction gameAction : validActions){
 //            if ((gameAction.getActionType() != ActionType.PHYSICAL_ATTACK) && (gameAction.getActionType() != ActionType.END_TURN)){
 //                phase = 0;
@@ -234,17 +269,10 @@ public class GameTreeBestMoveND extends Behaviour{
 //                }
 //            }
 //        }
-        //
-        for (GameAction gameAction: validActions){ //基础的方法
-            double score = alphaBeta(context, player.getId(), gameAction, depth);
-            if (score > bestScore){
-                bestAction = gameAction;
-                bestScore = score;
-            }
-        }
-        //
+        // 分阶段，区分出牌和平A End
 
-//        SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder()); // 选取最优k个剪枝
+        // 选取最优k个剪枝
+//        SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
 //        for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
 //            GameContext simulationResult = simulateAction(context.clone(), player.getId(), gameAction);  //假设执行gameAction，得到之后的game context
 //            double gameStateScore = evaluateContext(simulationResult, player.getId());	//heuristic.getScore(simulationResult, player.getId());     //heuristic评估执行gameAction之后的游戏局面的分数
@@ -262,14 +290,13 @@ public class GameTreeBestMoveND extends Behaviour{
 //                bestScore = score;
 //            }
 //            k += 1;
-//            if(k >= 3){
+//            if(k >= 2){
 //                break;
 //            }
 //        }
+        // 选取最优k个剪枝 End
 
-//        if (bestAction.getActionType() == ActionType.END_TURN){ // 每个turn清空一次hash的剪枝
-//            store.clear();
-//        }
+        logger.info("Local Evaluate Cnt: {}", localEvaluateCnt);
         return bestAction;
     }
 
@@ -289,46 +316,31 @@ public class GameTreeBestMoveND extends Behaviour{
 
         double score = Float.NEGATIVE_INFINITY;
 
-        Player player = simulation.getPlayer(playerId);
-        Player opponent = simulation.getOpponent(player);
-        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
-            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
-        }
-        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
-            return Float.POSITIVE_INFINITY;
-        }
-        List<Double> playerFeature = player.getPlayerStateDouble();
-        List<Double> opponentFeature  = opponent.getPlayerStateDouble();
-        List<Double> envState = new ArrayList<>();
-        envState.addAll(playerFeature);
-        envState.addAll(opponentFeature);
+        // 合并状态  需要在开始搜索前查找一次哈希表和结束搜索后将结果保存入哈希表
+//        Player player = simulation.getPlayer(playerId);
+//        Player opponent = simulation.getOpponent(player);
+//        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
+//            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
+//        }
+//        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
+//            return Float.POSITIVE_INFINITY;
+//        }
+//        List<Double> envState = getFeature(player, opponent, simulation.getTurn());
 
-        int threatLevelHigh= 0;
-        int threatLevelMiddle = 0;
-        int threatLevel = calculateThreatLevel(simulation, playerId);
-        if(threatLevel == 2){
-            threatLevelHigh = 1;
-        }else if(threatLevel == 1){
-            threatLevelMiddle = 1;
-        }
-        envState.add(threatLevelHigh / 1.0);
-        envState.add(threatLevelMiddle / 1.0);
-        envState.add(simulation.getTurn() / 1.0); // 89
-        // 增加比例特征
-        envState.add((playerFeature.get(0) + 1.0) / (opponentFeature.get(0) + 1.0)); // HP 比值
-        envState.add((playerFeature.get(35) + playerFeature.get(38) + playerFeature.get(40) + 1.0) /
-                (opponentFeature.get(35) + opponentFeature.get(38) + opponentFeature.get(40) + 1.0)); // 手牌数目 比值
-        envState.add((playerFeature.get(6) + playerFeature.get(9) + 1.0) / (opponentFeature.get(6) + opponentFeature.get(9) + 1.0)); // 场上随从数目 比值
-        envState.add((playerFeature.get(7) + 1.0) / (opponentFeature.get(7) + 1.0)); // 场上可攻击随从攻击力 比值
-        envState.add((playerFeature.get(8) + 1.0) / (opponentFeature.get(8) + 1.0)); // 场上随从血量 比值
-        envState.add((playerFeature.get(10) + 1.0) / (opponentFeature.get(10) + 1.0)); // 场上不可攻击随从血量 比值
-        envState.add((playerFeature.get(11) + 1.0) / (opponentFeature.get(11) + 1.0)); // 场上不可攻击随从血量 比值
-        // 96
+//        if (store.containsKey(envState)) // 如果哈希表中有特征向量，则直接从哈希表中获得
+//            return getStoredValue(envState);
+        // 合并状态 End
 
-        if (store.containsKey(envState)){ // 合并状态
-            return store.get(envState); // 多线程模拟会报错
+        // 基础版本
+        for (GameAction gameAction: validActions){
+            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
+            if (score >= 100000) {
+                break;
+            }
         }
+        // 基础版本 End
 
+        // 选取最优k个剪枝
 //        SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
 //        for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
 //            GameContext simulationResult = simulateAction(simulation.clone(), playerId, gameAction);  //假设执行gameAction，得到之后的game context
@@ -343,19 +355,13 @@ public class GameTreeBestMoveND extends Behaviour{
 //        for(GameAction gameAction: scoreActionMap.values()){
 //            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
 //            k += 1;
-//            if (score >= 100000 || k >= 3) {
+//            if (score >= 100000 || k >= 2) {
 //                break;
 //            }
 //        }
+        // 选取最优k个剪枝 End
 
-        //
-        for (GameAction gameAction: validActions){
-            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
-            if (score >= 100000) {
-                break;
-            }
-        }
-        //
+        // 分阶段，区分出牌和平A
 //        for (GameAction gameAction : validActions) {
 //            if (phase == 0 && (gameAction.getActionType() != ActionType.PHYSICAL_ATTACK) && (gameAction.getActionType() != ActionType.END_TURN)){
 //                score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
@@ -373,8 +379,19 @@ public class GameTreeBestMoveND extends Behaviour{
 //        if (score == Float.NEGATIVE_INFINITY){ // 这步很重要，当这里没有符合条件的action时，就直接进行局面评估
 //            score = evaluateContext(simulation, playerId);
 //        }
-        store.put(envState, score);
+        // 分阶段，区分出牌和平A End
+
+        // 合并状态
+//        putStoredValue(envState, score);
+        // 合并状态 End
         return score;
     }
 
+    private double getStoredValue(List<Double> envState){
+        return store.get(envState); // 多线程模拟会报错
+    }
+
+    private void putStoredValue(List<Double> envState, double score){
+        store.put(envState, score);
+    }
 }

@@ -20,7 +20,7 @@ public class MonteCarloTreeSearch extends Behaviour {
 
 	private final static Logger logger = LoggerFactory.getLogger(MonteCarloTreeSearch.class);
 
-	private static final int ITERATIONS = 500;
+	private static final int ITERATIONS = 10000;
 
 	@Override
 	public String getName() {  // 这个似乎还没有完整实现，没法跑， Node.process() 报NullPointer Exception
