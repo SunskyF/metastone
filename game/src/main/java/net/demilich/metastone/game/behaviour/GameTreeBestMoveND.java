@@ -33,7 +33,7 @@ public class GameTreeBestMoveND extends Behaviour{
     int nFeature = 96; // 当特征改变时，需要更改这里的特征数目
     // Game Para End
 
-    String paraFile = "NdModel/linear/96feaGameTree_mean_para_ES.data";
+    String paraFile = "NdModel/linear/96feaGameTree_mean_para_ES_basic.data";
 
     // Simulation Count
     private static int evaluateCnt = 0;
@@ -175,7 +175,7 @@ public class GameTreeBestMoveND extends Behaviour{
         }
         envState.add(threatLevelHigh / 1.0);
         envState.add(threatLevelMiddle / 1.0);
-        envState.add(turn);
+        envState.add(turn); // 89
 
         envState.add((playerFeature.get(0) + 1.0) / (opponentFeature.get(0) + 1.0)); // HP 比值
         envState.add((playerFeature.get(35) + playerFeature.get(38) + playerFeature.get(40) + 1.0) /
@@ -215,8 +215,8 @@ public class GameTreeBestMoveND extends Behaviour{
     public GameAction requestAction(GameContext context, Player player, List<GameAction> validActions) {
         requestCnt++;
         localEvaluateCnt = 0;
-        if (requestCnt % 100 == 0)
-            logger.info("requestCnt: {}, evaluateCnt: {}", requestCnt, evaluateCnt);
+//        if (requestCnt % 100 == 0)
+//            logger.info("requestCnt: {}, evaluateCnt: {}", requestCnt, evaluateCnt);
 
         if (validActions.size() == 1) {  //只剩一个action一般是 END_TURN
             return validActions.get(0);
@@ -296,7 +296,7 @@ public class GameTreeBestMoveND extends Behaviour{
 //        }
         // 选取最优k个剪枝 End
 
-        logger.info("Local Evaluate Cnt: {}", localEvaluateCnt);
+//        logger.info("Local Evaluate Cnt: {}, store size: {}", localEvaluateCnt, store.size());
         return bestAction;
     }
 
@@ -317,18 +317,13 @@ public class GameTreeBestMoveND extends Behaviour{
         double score = Float.NEGATIVE_INFINITY;
 
         // 合并状态  需要在开始搜索前查找一次哈希表和结束搜索后将结果保存入哈希表
-//        Player player = simulation.getPlayer(playerId);
-//        Player opponent = simulation.getOpponent(player);
-//        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
-//            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
-//        }
-//        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
-//            return Float.POSITIVE_INFINITY;
-//        }
-//        List<Double> envState = getFeature(player, opponent, simulation.getTurn());
+        Player player = simulation.getPlayer(playerId);
+        Player opponent = simulation.getOpponent(player);
 
-//        if (store.containsKey(envState)) // 如果哈希表中有特征向量，则直接从哈希表中获得
-//            return getStoredValue(envState);
+        List<Double> envState = getFeature(player, opponent, simulation.getTurn());
+
+        if (store.containsKey(envState)) // 如果哈希表中有特征向量，则直接从哈希表中获得
+            return getStoredValue(envState);
         // 合并状态 End
 
         // 基础版本
@@ -382,7 +377,7 @@ public class GameTreeBestMoveND extends Behaviour{
         // 分阶段，区分出牌和平A End
 
         // 合并状态
-//        putStoredValue(envState, score);
+        putStoredValue(envState, score);
         // 合并状态 End
         return score;
     }

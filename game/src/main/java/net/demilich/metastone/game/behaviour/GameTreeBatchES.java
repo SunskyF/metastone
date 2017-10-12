@@ -72,7 +72,7 @@ public class GameTreeBatchES extends Behaviour{
         // readBinary
         try{
             logger.info("Loading...");
-            File readFile = new File("NdModel/linear/96feaGameTree_mean_para_ES.data");
+            File readFile = new File("NdModel/linear/96feaGameTree_mean_para_ES.data"); // 记得修改保存时的路径
             this.para = Nd4j.readBinary(readFile);
         }
         catch (IOException e){
@@ -220,7 +220,7 @@ public class GameTreeBatchES extends Behaviour{
     private double alphaBeta(GameContext context, int playerId, GameAction action, int depth) {
         GameContext simulation = context.clone();  // clone目前环境
         simulation.getLogic().performGameAction(playerId, action);  // 在拷贝环境中执行action
-        if (depth == 0 || simulation.gameDecided() || simulation.getActivePlayerId() != playerId) {  // depth层递归结束、发生玩家切换（我方这轮打完了）或者比赛结果已定时，返回score
+        if (simulation.gameDecided() || simulation.getActivePlayerId() != playerId) {  // depth层递归结束、发生玩家切换（我方这轮打完了）或者比赛结果已定时，返回score
             return evaluateContext(simulation, playerId); //  || simulation.gameDecided()
         }
 
@@ -341,7 +341,7 @@ public class GameTreeBatchES extends Behaviour{
                 try{
                     totalBestReward = kidRewards[kidRank[0]];
                     logger.info("Saving... {}", totalBestReward);
-                    File saveFile = new File("NdModel/linear/96feaGameTree_best_para_ES_control_warrior.data");
+                    File saveFile = new File("NdModel/linear/96feaGameTree_best_para_ES_turnEnd.data");
                     Nd4j.saveBinary(this.para.add(noise.getRow(kidRank[0]).transpose().mul(sign(batchCount)*this.SIGMA)), saveFile);
                 }
                 catch (IOException e){
@@ -352,7 +352,7 @@ public class GameTreeBatchES extends Behaviour{
                 try{
                     totalMeanReward = meanReward;
                     logger.info("Saving... {}", totalMeanReward);
-                    File saveFile = new File("NdModel/linear/96feaGameTree_mean_para_ES_control_warrior.data");
+                    File saveFile = new File("NdModel/linear/96feaGameTree_mean_para_ES_turnEnd.data");
                     Nd4j.saveBinary(this.para, saveFile);
 //                    File saveFileTop = new File("NdModel/linear/98feaGameTree_topmean_para_ES_basic.data");
 //                    Nd4j.saveBinary(this.para.add(cumu.div(5)), saveFileTop);

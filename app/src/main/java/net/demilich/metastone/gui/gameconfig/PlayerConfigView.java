@@ -193,10 +193,11 @@ public class PlayerConfigView extends VBox {
 //		behaviourList.add(new LinearNdTest());
 		behaviourList.add(new GameTreeBatchES());
 		behaviourList.add(new GameTreeBestMoveND());
-		behaviourList.add(new LinearBatchPSO());
-		behaviourList.add(new GameTreeBatchPSO());
+//		behaviourList.add(new LinearBatchPSO());
+//		behaviourList.add(new GameTreeBatchPSO());
 		behaviourList.add(new GameTreeCrossTurn());
-		behaviourList.add(new GameTreeStage());
+		behaviourList.add(new GameTreeCrossTurnSimplify());
+//		behaviourList.add(new GameTreeStage());
 //		behaviourList.add(new LinearTD());
 		/* ------fh end--- */
 

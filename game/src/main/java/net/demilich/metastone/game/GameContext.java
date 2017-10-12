@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
+import net.demilich.metastone.game.behaviour.IBehaviour;
 import net.demilich.metastone.game.behaviour.features.Feature_basic;
 import net.demilich.metastone.game.cards.CardType;
 import net.demilich.metastone.game.entities.heroes.HeroClass;
@@ -564,6 +565,36 @@ public class GameContext implements Cloneable, IDisposable {
 		}
 		if (nextAction == null) {
 			throw new RuntimeException("Behaviour " + getActivePlayer().getBehaviour().getName() + " selected NULL action while "
+					+ getValidActions().size() + " actions were available");
+		}
+		performAction(activePlayer, nextAction);
+
+		return nextAction.getActionType() != ActionType.END_TURN;
+	}
+
+	public boolean playTurn(IBehaviour behaviour) {
+		if (++actionsThisTurn > 99) {
+			logger.warn("Turn has been forcefully ended after {} actions", actionsThisTurn);
+			endTurn();
+			return false;
+		}
+		if (logic.hasAutoHeroPower(activePlayer)) {
+			performAction(activePlayer, getAutoHeroPowerAction());
+			return true;
+		}
+
+		List<GameAction> validActions = getValidActions();
+		if (validActions.size() == 0) {
+			//endTurn();
+			return false;
+		}
+
+		GameAction nextAction = behaviour.requestAction(this, getActivePlayer(), getValidActions());
+		while (!acceptAction(nextAction)) {
+			nextAction = behaviour.requestAction(this, getActivePlayer(), getValidActions());
+		}
+		if (nextAction == null) {
+			throw new RuntimeException("Behaviour " + behaviour.getName() + " selected NULL action while "
 					+ getValidActions().size() + " actions were available");
 		}
 		performAction(activePlayer, nextAction);
