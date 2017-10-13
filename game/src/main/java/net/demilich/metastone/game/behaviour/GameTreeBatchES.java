@@ -211,9 +211,6 @@ public class GameTreeBatchES extends Behaviour{
                 bestScore = score;
             }
         }
-//        if (bestAction.getActionType() == ActionType.END_TURN){
-//            store.clear();//每次都是只对一次搜索
-//        }
         return bestAction;
     }
 
@@ -330,7 +327,7 @@ public class GameTreeBatchES extends Behaviour{
 //                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId) * utility.getDouble(0, i))); // 莫凡
                 if (i > 4)
                     break;
-                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId)));
+                cumu = cumu.add(noise.getRow(kId).transpose().mul(sign(kId))); // 最好的几个
             }
             logger.info("Rewards: {}", rewards);
 //            logger.info("Best Para: {}", this.para.add(noise.getRow(kidRank[0]).transpose().mul(sign(batchCount)*this.SIGMA))

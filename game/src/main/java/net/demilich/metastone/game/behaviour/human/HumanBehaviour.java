@@ -2,9 +2,7 @@ package net.demilich.metastone.game.behaviour.human;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import net.demilich.metastone.game.Attribute;
 import net.demilich.metastone.game.actions.ActionType;
@@ -44,7 +42,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 	IBehaviour oppoBehaviour = new GreedyOptimizeMoveLinear(new SupervisedLinearHeuristic()); // 对手使用的策略
 
 	// Para
-	private int maxDepth = 2;
+	private int maxDepth = 1;
 	private int maxBestActions = 2;
 	// Para End
 
@@ -52,7 +50,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 	int nFeature = 96;
 	// Game Para End
 
-	String paraFile = "NdModel/linear/96feaGameTree_mean_para_ES.data";
+	String paraFile = "NdModel/linear/96feaGameTree_mean_para_ES_turnEnd.data";
 	// to see CrossTurn End
 
 	private GameAction selectedAction;
@@ -88,6 +86,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 			try {
 				Thread.sleep(BuildConfig.DEFAULT_SLEEP_DELAY);
 			} catch (InterruptedException e) {
+
 			}
 		}
 		return mulliganCards;
@@ -99,6 +98,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 		waitingForInput = false;
 	}
 
+	//原来部分的代码，应该也是用于输出的
 //	private static int calculateThreatLevel(GameContext context, int playerId) {
 //		int damageOnBoard = 0;
 //		Player player = context.getPlayer(playerId);
@@ -185,7 +185,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 		this.mulliganCards = mulliganCards;
 		waitingForInput = false;
 	}
-	// Too see Cross Turn Extra Function
+	// 增加的额外代码
 	INDArray linear(int nIn, int nOut){
 		INDArray w = Nd4j.randn(nIn * nOut, 1);
 		INDArray b = Nd4j.randn(nOut, 1);
@@ -303,7 +303,7 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 			tmp[i] = envState.get(i);
 		}
 		if (isprint){
-			logger.info("EnvState: {}", tmp);
+//			logger.info("EnvState: {}", tmp);
 		}
 		INDArray featureIND = Nd4j.create(tmp);
 		return getValue(this.p, featureIND);
@@ -343,8 +343,8 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 		GameContext simulation = context.clone();  // clone目前环境
 		simulation.getLogic().performGameAction(playerId, action);  // 在拷贝环境中执行action
 
-		if (depth == 0 || simulation.gameDecided()) {  // depth层递归结束、(发生玩家切换（我方这轮打完了）)或者比赛结果已定时，返回score
-			double temp = evaluateContext(simulation, playerId, false);
+		if ((depth == 0 && action.getActionType() == ActionType.END_TURN) || simulation.gameDecided()) {  // depth层递归结束、(发生玩家切换（我方这轮打完了）)或者比赛结果已定时，返回score
+			double temp = evaluateContext(simulation, playerId, true);
 			logger.info("score: {}", temp);
 			return temp;
 		}
@@ -354,11 +354,8 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 			if (simulation.gameDecided()) {  // 比赛结果已定时，返回
 				return evaluateContext(simulation, playerId, false);
 			}
-//			logger.info("-------------------------------------Before start Turn------------------------");
-//			evaluateContext(simulation, playerId, true);
 			simulation.startTurn(simulation.getActivePlayerId(), true); // 回到我方回合
-//			logger.info("After start Turn");
-//			evaluateContext(simulation, playerId, true);
+			depth -= 1;
 		}
 
 		List<GameAction> validActions = simulation.getValidActions();  //执行完一个action之后，获取接下来可以执行的action
@@ -366,25 +363,40 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 
 		Player player = simulation.getPlayer(playerId);
 		Player opponent = simulation.getOpponent(player);
-//        if (player.getHero().isDestroyed()) {   // 己方被干掉，得分 负无穷
-//            return Float.NEGATIVE_INFINITY;  // 正负无穷会影响envState的解析，如果要加的话可以改成 +-100之类的
-//        }
-//        if (opponent.getHero().isDestroyed()) {  // 对方被干掉，得分 正无穷
-//            return Float.POSITIVE_INFINITY;
-//        }
+
 		List<Double> envState = getFeature(player, opponent, simulation.getTurn());
 
 		if (store.containsKey(envState)) // 如果哈希表中有特征向量，则直接从哈希表中获得
 			return getStoredValue(envState);
 
 		// 基础版本
-		for (GameAction gameAction : validActions) {
-			score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth - 1));  // 递归调用alphaBeta，取评分较大的
-			if (score >= 100000) {
+//        for (GameAction gameAction : validActions) {
+//            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth));  // 递归调用alphaBeta，取评分较大的
+//            if (score >= 100000) {
+//                break;
+//            }
+//        }
+		// 基础版本 End
+		// 选取最优k个剪枝
+		SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
+		for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
+			GameContext simulationResult = simulateAction(simulation.clone(), playerId, gameAction);  //假设执行gameAction，得到之后的game context
+			double gameStateScore = evaluateContext(simulationResult, playerId, false);  //heuristic.getScore(simulationResult, playerId);  //heuristic评估执行gameAction之后的游戏局面的分数
+			if(!scoreActionMap.containsKey(gameStateScore)){  // 注意：暂时简单的认为gameStateScore相同的两个simulationResult context一样，只保留第一个simulationResult对应的action
+				scoreActionMap.put(gameStateScore, gameAction);
+			}
+			simulationResult.dispose();  //GameContext环境每次仿真完销毁
+		}
+
+		int k = 0;
+		for(GameAction gameAction: scoreActionMap.values()){
+			score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth));  // 递归调用alphaBeta，取评分较大的
+			k += 1;
+			if (score >= 100000 || k >= maxBestActions) {
 				break;
 			}
 		}
-		// 基础版本 End
+		// 选取最优k个剪枝 End
 		putStoredValue(envState, score);
 		return score;
 	}
@@ -400,6 +412,6 @@ public class HumanBehaviour extends Behaviour implements IActionSelectionListene
 	private void putStoredValue(List<Double> envState, double score){
 		store.put(envState, score);
 	}
-	// Too see Cross Turn Extra Function End
+	// 增加的额外代码 End
 
 }

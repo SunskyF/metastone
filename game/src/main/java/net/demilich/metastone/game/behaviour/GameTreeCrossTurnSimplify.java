@@ -30,8 +30,8 @@ public class GameTreeCrossTurnSimplify extends Behaviour{
     IBehaviour oppoBehaviour = new GreedyOptimizeMoveLinear(new SupervisedLinearHeuristic()); // 对手使用的策略
 
     // Para
-    private int maxDepth = 2;
-    private int maxBestActions = 2;
+    private int maxDepth = 1;
+    private int maxBestActions = 4;
     // Para End
 
     // Game Para
@@ -45,6 +45,7 @@ public class GameTreeCrossTurnSimplify extends Behaviour{
         try{
             File readFile = new File(paraFile);
             this.para = Nd4j.readBinary(readFile);
+//            logger.info("Para({}): {}", paraFile, this.para);
         }
         catch (IOException e){
             e.printStackTrace();
@@ -218,7 +219,7 @@ public class GameTreeCrossTurnSimplify extends Behaviour{
                 bestScore = score;
             }
         }
-//        logger.info("Choosed: {}, store size: {}", bestAction, store.size());
+        logger.info("Choosed: {}, store size: {}", bestAction, store.size());
 //        logger.info("Store Size: {}", store.size());
 
         // 基础版本 End
@@ -280,13 +281,13 @@ public class GameTreeCrossTurnSimplify extends Behaviour{
     }
 
     private double alphaBeta(GameContext context, int playerId, GameAction action, int depth) {
-//        outputAction(action, depth);
+        outputAction(action, depth);
         GameContext simulation = context.clone();  // clone目前环境
         simulation.getLogic().performGameAction(playerId, action);  // 在拷贝环境中执行action
 
         if ((depth == 0 && action.getActionType() == ActionType.END_TURN) || simulation.gameDecided()) {  // depth层递归结束、(发生玩家切换（我方这轮打完了）)或者比赛结果已定时，返回score
             double temp = evaluateContext(simulation, playerId);
-//            logger.info("score: {}", temp);
+            logger.info("score: {}", temp);
             return temp;
         }
         if (simulation.getActivePlayerId() != playerId){ // 发生玩家切换
@@ -311,32 +312,32 @@ public class GameTreeCrossTurnSimplify extends Behaviour{
             return getStoredValue(envState);
 
         // 基础版本
-        for (GameAction gameAction : validActions) {
-            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth));  // 递归调用alphaBeta，取评分较大的
-            if (score >= 100000) {
-                break;
-            }
-        }
-        // 基础版本 End
-        // 选取最优k个剪枝
-//        SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
-//        for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
-//            GameContext simulationResult = simulateAction(simulation.clone(), playerId, gameAction);  //假设执行gameAction，得到之后的game context
-//            double gameStateScore = evaluateContext(simulationResult, playerId);  //heuristic.getScore(simulationResult, playerId);  //heuristic评估执行gameAction之后的游戏局面的分数
-//            if(!scoreActionMap.containsKey(gameStateScore)){  // 注意：暂时简单的认为gameStateScore相同的两个simulationResult context一样，只保留第一个simulationResult对应的action
-//                scoreActionMap.put(gameStateScore, gameAction);
-//            }
-//            simulationResult.dispose();  //GameContext环境每次仿真完销毁
-//        }
-//
-//        int k = 0;
-//        for(GameAction gameAction: scoreActionMap.values()){
+//        for (GameAction gameAction : validActions) {
 //            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth));  // 递归调用alphaBeta，取评分较大的
-//            k += 1;
-//            if (score >= 100000 || k >= maxBestActions) {
+//            if (score >= 100000) {
 //                break;
 //            }
 //        }
+        // 基础版本 End
+        // 选取最优k个剪枝
+        SortedMap<Double, GameAction> scoreActionMap = new TreeMap<>(Comparator.reverseOrder());
+        for (GameAction gameAction : validActions) {  // 遍历validactions，使用Linear评估函数评估得到的局面，并按得分降序排列
+            GameContext simulationResult = simulateAction(simulation.clone(), playerId, gameAction);  //假设执行gameAction，得到之后的game context
+            double gameStateScore = evaluateContext(simulationResult, playerId);  //heuristic.getScore(simulationResult, playerId);  //heuristic评估执行gameAction之后的游戏局面的分数
+            if(!scoreActionMap.containsKey(gameStateScore)){  // 注意：暂时简单的认为gameStateScore相同的两个simulationResult context一样，只保留第一个simulationResult对应的action
+                scoreActionMap.put(gameStateScore, gameAction);
+            }
+            simulationResult.dispose();  //GameContext环境每次仿真完销毁
+        }
+
+        int k = 0;
+        for(GameAction gameAction: scoreActionMap.values()){
+            score = Math.max(score, alphaBeta(simulation, playerId, gameAction, depth));  // 递归调用alphaBeta，取评分较大的
+            k += 1;
+            if (score >= 100000 || k >= maxBestActions) {
+                break;
+            }
+        }
         // 选取最优k个剪枝 End
         putStoredValue(envState, score);
         return score;
